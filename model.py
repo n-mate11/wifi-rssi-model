@@ -24,8 +24,6 @@ def load_data(folder):
   return df  
 
 def split_data(df):
-   # split the data into train from columns 0 till 323 and test from column 324 till the end
-   # df is a ndarray
     X = df[:, 0:324]
     y = df[:, 324]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
@@ -50,7 +48,6 @@ def add_directions(df):
   return df
 
 def evaluate_model(y_test, y_pred):
-  # calculate the metrics
   r2 = r2_score(y_test, y_pred)
   mse = mean_squared_error(y_test, y_pred)
   mae = mean_absolute_error(y_test, y_pred)
