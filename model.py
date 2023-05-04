@@ -138,10 +138,10 @@ def main():
     # add directions with one hot encoding
     df = add_directions(df)
 
-    # preprocess the data with MinMaxScaler
+    # preprocess the data
     df = preprocess_data(df)
 
-    # train the model
+    # train and evaluate the models
     y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
     evaluate_model(y_test, y_pred_RF, "Random Forest")
     evaluate_model(y_test, y_pred_DT, "Decision Tree")
