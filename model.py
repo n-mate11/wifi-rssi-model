@@ -40,6 +40,9 @@ X_MAX = 70
 Y_MAX = 70
 Z_MAX = 12
 
+# flags
+USE_DIRECTION_FLAG = True
+
 
 def load_data(folder):
     csv_files = glob.glob(folder + "/*.csv")
@@ -49,7 +52,10 @@ def load_data(folder):
 
 
 def split_data(df, target, test_size=0.2, random_state=0):
-    X = df.iloc[:, 0 : NUMBER_OF_APS - 1]
+    if USE_DIRECTION_FLAG:
+        X = df.loc[:, ~df.columns.isin(['x', 'y', 'z'])]
+    else:
+        X = df.iloc[:, 0 : NUMBER_OF_APS - 1]
     y = df.iloc[:, target - 1]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
