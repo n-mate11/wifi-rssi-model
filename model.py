@@ -50,7 +50,7 @@ def load_data(folder):
 
 def split_data(df, target, test_size=0.2, random_state=0):
     X = df.iloc[:, 0 : NUMBER_OF_APS - 1]
-    y = df.iloc[:, target]
+    y = df.iloc[:, target - 1]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
@@ -98,14 +98,36 @@ def add_directions(df):
         df["West"].iloc[i + 45 : i + 60] = 1
     return df
 
+def train(df, target):
+    X_train, X_test, y_train, y_test = split_data(df, target=target, test_size=0.2, random_state=0)
+    RF = RandomForestRegressor()
+    DT = DecisionTreeRegressor()
+    SVM = SVR()
+    KNN = KNeighborsRegressor()
+    RF.fit(X_train, y_train)
+    DT.fit(X_train, y_train)
+    SVM.fit(X_train, y_train)
+    KNN.fit(X_train, y_train)
+    y_pred_RF = RF.predict(X_test)
+    y_pred_DT = DT.predict(X_test)
+    y_pred_SVM = SVM.predict(X_test)
+    y_pred_KNN = KNN.predict(X_test)
+    return y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test
 
-def evaluate_model(y_test, y_pred):
+def evaluate_model(y_test, y_pred, name):
     r2 = r2_score(y_test, y_pred)
     mse = mean_squared_error(y_test, y_pred)
     mae = mean_absolute_error(y_test, y_pred)
     mdae = median_absolute_error(y_test, y_pred)
-    return r2, mse, mae, mdae
+    print_results((r2, mse, mae, mdae), name)
 
+
+def print_results(eval_tuple, model_name):
+    print(model_name)
+    print("R2: ", eval_tuple[0])
+    print("MSE: ", eval_tuple[1])
+    print("MAE: ", eval_tuple[2])
+    print("MDAE: ", eval_tuple[3])
 
 def main():
     # load the data
@@ -116,60 +138,30 @@ def main():
     # add directions with one hot encoding
     df = add_directions(df)
 
-    # preprocess the data with MinMaxScaler
+    # preprocess the data
     df = preprocess_data(df)
 
-    # split the data
-    X_train, X_test, y_train, y_test = split_data(df, target=(X_COL-1), test_size=0.2, random_state=0)
+    # train and evaluate the models
+    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
+    evaluate_model(y_test, y_pred_RF, "Random Forest")
+    evaluate_model(y_test, y_pred_DT, "Decision Tree")
+    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+    print("--------------------------------------------------")
 
-    # models
-    RF = RandomForestRegressor()
-    DT = DecisionTreeRegressor()
-    SVM = SVR()
-    KNN = KNeighborsRegressor()
+    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Y_COL)
+    evaluate_model(y_test, y_pred_RF, "Random Forest")
+    evaluate_model(y_test, y_pred_DT, "Decision Tree")
+    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+    print("--------------------------------------------------")
 
-    # train the models
-    RF.fit(X_train, y_train)
-    DT.fit(X_train, y_train)
-    SVM.fit(X_train, y_train)
-    KNN.fit(X_train, y_train)
-
-    # predict the test data
-    y_pred_RF = RF.predict(X_test)
-    y_pred_DT = DT.predict(X_test)
-    y_pred_SVM = SVM.predict(X_test)
-    y_pred_KNN = KNN.predict(X_test)
-
-    # evaluate the models
-    r2_RF, mse_RF, mae_RF, mdae_RF = evaluate_model(y_test, y_pred_RF)
-    r2_DT, mse_DT, mae_DT, mdae_DT = evaluate_model(y_test, y_pred_DT)
-    r2_SVM, mse_SVM, mae_SVM, mdae_SVM = evaluate_model(y_test, y_pred_SVM)
-    r2_KNN, mse_KNN, mae_KNN, mdae_KNN = evaluate_model(y_test, y_pred_KNN)
-
-    # print the metrics
-    print("Random Forest")
-    print("R2: ", r2_RF)
-    print("MSE: ", mse_RF)
-    print("MAE: ", mae_RF)
-    print("MDAE: ", mdae_RF)
-
-    print("Decision Tree")
-    print("R2: ", r2_DT)
-    print("MSE: ", mse_DT)
-    print("MAE: ", mae_DT)
-    print("MDAE: ", mdae_DT)
-
-    print("SVM")
-    print("R2: ", r2_SVM)
-    print("MSE: ", mse_SVM)
-    print("MAE: ", mae_SVM)
-    print("MDAE: ", mdae_SVM)
-
-    print("KNN")
-    print("R2: ", r2_KNN)
-    print("MSE: ", mse_KNN)
-    print("MAE: ", mae_KNN)
-    print("MDAE: ", mdae_KNN)
+    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Z_COL)
+    evaluate_model(y_test, y_pred_RF, "Random Forest")
+    evaluate_model(y_test, y_pred_DT, "Decision Tree")
+    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+    print("--------------------------------------------------")
 
     # # save the model in pickle format
     # pickle.dump(regressor, open('model.pkl','wb'))
