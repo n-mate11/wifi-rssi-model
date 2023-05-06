@@ -14,6 +14,11 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 
+import tensorflow as tf
+from tensorflow import keras
+from keras.layers import Dense
+
+
 import matplotlib.pyplot as plt
 
 import pickle
@@ -42,6 +47,8 @@ Z_MAX = 12
 
 # flags
 USE_DIRECTION_FLAG = True
+TRAIN_NN_FLAG = True
+TRAIN_ML_FLAG = False
 
 
 def load_data(folder):
@@ -147,31 +154,69 @@ def main():
     # preprocess the data
     df = preprocess_data(df)
 
-    # train and evaluate the models
-    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
-    evaluate_model(y_test, y_pred_RF, "Random Forest")
-    evaluate_model(y_test, y_pred_DT, "Decision Tree")
-    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-    print("--------------------------------------------------")
+    if TRAIN_ML_FLAG:
+        # train and evaluate the models
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        print("--------------------------------------------------")
 
-    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Y_COL)
-    evaluate_model(y_test, y_pred_RF, "Random Forest")
-    evaluate_model(y_test, y_pred_DT, "Decision Tree")
-    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-    print("--------------------------------------------------")
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Y_COL)
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        print("--------------------------------------------------")
 
-    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Z_COL)
-    evaluate_model(y_test, y_pred_RF, "Random Forest")
-    evaluate_model(y_test, y_pred_DT, "Decision Tree")
-    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-    print("--------------------------------------------------")
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Z_COL)
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        print("--------------------------------------------------")
 
-    # # save the model in pickle format
-    # pickle.dump(regressor, open('model.pkl','wb'))
+        # # save the model in pickle format
+        # pickle.dump(regressor, open('model.pkl','wb'))
 
+    if TRAIN_NN_FLAG:
+        # split data 
+        X_train, X_test, y_train, y_test = split_data(df, target=X_COL, test_size=0.2, random_state=0)
+
+        # Create a neural network with keras and train it on the dataset
+        # use only one layer with 10 neurons and relu activation function
+
+        input_dim = X_train.shape[1]
+
+        model = keras.Sequential()
+        model.add(Dense(128, input_dim=input_dim, activation="relu")) # input layer
+        model.add(Dense(64, activation='relu')) # hidden layer
+        model.add(Dense(1)) # output layer
+
+        # compile the model
+        model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
+
+        # train the model
+        # number of epochs
+        EPOCHS = NUMBER_OF_APS - 1 + 4
+        # batch size
+        BATCH_SIZE = 32
+        # validation split
+        VALIDATION_SPLIT = 0.2
+
+        model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, validation_split=VALIDATION_SPLIT)
+
+        model.summary()
+
+        # evaluate the model
+        loss, accuracy = model.evaluate(X_test, y_test)
+        print("Accuracy: ", accuracy)
+        print("Loss: ", loss)
+
+        # make predictions
+        y_pred = model.predict(X_test)
+        print(y_pred)
 
 if __name__ == "__main__":
     main()
