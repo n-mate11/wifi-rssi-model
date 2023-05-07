@@ -14,6 +14,12 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 
+import tensorflow as tf
+from tensorflow import keras
+from keras.layers import Dense, Flatten
+from keras.models import Sequential
+
+
 import matplotlib.pyplot as plt
 
 import pickle
@@ -42,6 +48,9 @@ Z_MAX = 12
 
 # flags
 USE_DIRECTION_FLAG = True
+TRAIN_NN_FLAG = True
+TRAIN_ML_FLAG = False
+USE_PLOT_FLAG = True
 
 
 def load_data(folder):
@@ -127,7 +136,6 @@ def evaluate_model(y_test, y_pred, name):
     mdae = median_absolute_error(y_test, y_pred)
     print_results((r2, mse, mae, mdae), name)
 
-
 def print_results(eval_tuple, model_name):
     print(model_name)
     print("R2: ", eval_tuple[0])
@@ -147,31 +155,97 @@ def main():
     # preprocess the data
     df = preprocess_data(df)
 
-    # train and evaluate the models
-    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
-    evaluate_model(y_test, y_pred_RF, "Random Forest")
-    evaluate_model(y_test, y_pred_DT, "Decision Tree")
-    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-    print("--------------------------------------------------")
+    if TRAIN_ML_FLAG:
+        # train and evaluate the models
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        print("--------------------------------------------------")
 
-    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Y_COL)
-    evaluate_model(y_test, y_pred_RF, "Random Forest")
-    evaluate_model(y_test, y_pred_DT, "Decision Tree")
-    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-    print("--------------------------------------------------")
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Y_COL)
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        print("--------------------------------------------------")
 
-    y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Z_COL)
-    evaluate_model(y_test, y_pred_RF, "Random Forest")
-    evaluate_model(y_test, y_pred_DT, "Decision Tree")
-    evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-    evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-    print("--------------------------------------------------")
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Z_COL)
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        print("--------------------------------------------------")
 
-    # # save the model in pickle format
-    # pickle.dump(regressor, open('model.pkl','wb'))
+        # # save the model in pickle format
+        # pickle.dump(regressor, open('model.pkl','wb'))
 
+    if TRAIN_NN_FLAG:
+        # split data
+        X_train, X_test, y_train, y_test = split_data(df, target=X_COL, test_size=0.2, random_state=0)
+
+        # Create a neural network with keras and train it on the dataset
+        # use only one layer with 10 neurons and relu activation function
+
+        input_dim = X_train.shape[1]
+
+        model = Sequential()
+        model.add(Flatten(input_shape=(input_dim,)))
+        model.add(Dense(512, input_dim=input_dim, activation="relu")) # input layer
+        model.add(Dense(1, activation='linear')) # output layer
+
+        # compile the model for a regression problem that avoids the evaluation method resulting in the same loss and accuracy value
+        model.compile(loss='mean_squared_error', optimizer='adam', metrics = ['mse', 'mae'])
+
+        # train the model
+        # number of epochs
+        EPOCHS = 100
+        # batch size
+        BATCH_SIZE = 16
+        # validation split
+        VALIDATION_SPLIT = 0.2
+
+        # fit the model for a regression problem that avoids the evaluation method resulting in the same loss and accuracy value
+        history = model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, validation_split=VALIDATION_SPLIT)
+
+        model.summary()
+
+        if USE_PLOT_FLAG:
+            #plot the loss and validation loss of the dataset
+            plt.plot(history.history['mae'], label='mae')
+            plt.plot(history.history['val_mae'], label='val_mae')
+            plt.legend()
+            plt.savefig('mae.png')
+
+            plt.plot(history.history['loss'])
+            plt.plot(history.history['val_loss'])
+            plt.title('Model loss')
+            plt.ylabel('Loss')
+            plt.xlabel('Epoch')
+            plt.legend(['Train', 'Validation'], loc='upper right')
+            plt.savefig('epoch.png')
+
+        scores = model.evaluate(X_test, y_test, verbose = 0)
+        print('Mean Squared Error : ', scores[1])
+        print('Mean Absolute Error : ', scores[2])
+
+        # make predictions
+        y_pred = model.predict(X_test)
+        r2 = r2_score(y_test, y_pred)
+        print('r2 score: ', r2.round(2) * 100, '%')
+
+        if USE_PLOT_FLAG:
+            y_pred = y_pred.flatten()
+            plt.scatter(y_test, y_pred)
+            plt.axes(aspect='equal')
+            plt.xlabel('True values')
+            plt.ylabel('Predicted values')
+            plt.xlim([0, 50000])
+            plt.ylim([0, 50000])
+            plt.plot([0, 50000], [0, 50000])
+            plt.plot()
+            plt.savefig('scatter.png')
 
 if __name__ == "__main__":
     main()
