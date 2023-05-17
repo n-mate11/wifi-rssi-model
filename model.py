@@ -16,7 +16,7 @@ from sklearn.neighbors import KNeighborsRegressor
 
 import tensorflow as tf
 from tensorflow import keras
-from keras.layers import Dense, Flatten
+from keras.layers import Dense, Dropout
 from keras.models import Sequential
 
 import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ X_MAX = 70
 Y_MAX = 70
 Z_MAX = 12
 
-EPOCHS = 100
+EPOCHS = 200
 BATCH_SIZE = 16
 VALIDATION_SPLIT = 0.2
 
@@ -94,12 +94,12 @@ def enrich_with_ap_coords(df, ap_coords):
     return newdf
 
 
-def split_data(df, target, test_size=0.2, random_state=0):
-    if USE_DIRECTION_FLAG:
-        X = df.loc[:, ~df.columns.isin(["x", "y", "z"])]
+def split_data(df, test_size=0.2, random_state=0):
+    X = df.loc[:, ~df.columns.isin(["x", "y", "z"])]
+    if TRAIN_NN_FLAG:
+        y = df[["x", "y", "z"]]
     else:
-        X = df.iloc[:, 0 : NUMBER_OF_APS - 1]
-    y = df.iloc[:, target - 1]
+        y = df[["x"]]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
@@ -247,15 +247,15 @@ def main():
 
     if TRAIN_NN_FLAG:
         # split data
-        X_train, X_test, y_train, y_test = split_data(
-            df, target=X_COL, test_size=0.2, random_state=0
-        )
+        X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
 
         input_dim = X_train.shape[1]
         model = Sequential()
-        model.add(Flatten(input_shape=(input_dim,)))
-        model.add(Dense(512, input_dim=input_dim, activation="relu"))
-        model.add(Dense(1, activation="linear"))
+        model.add(Dense(256, input_dim=input_dim, activation="relu"))
+        model.add(Dropout(0.1))
+        model.add(Dense(128, input_dim=input_dim, activation="relu"))
+        model.add(Dropout(0.1))
+        model.add(Dense(3, activation="linear"))
         model.compile(
             loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
         )
@@ -265,24 +265,30 @@ def main():
             epochs=EPOCHS,
             batch_size=BATCH_SIZE,
             validation_split=VALIDATION_SPLIT,
+            shuffle=True,
         )
 
         model.summary()
 
+        plt.figure(figsize=(10, 5))
+        plt.plot(history.history["loss"], label="Training Loss")
+        plt.plot(history.history["val_loss"], label="Validation Loss")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.title("Training and Validation Loss")
+        plt.legend()
+        plt.show()
+
         if USE_PLOT_FLAG:
             # plot the loss and validation loss of the dataset
-            plt.plot(history.history["mae"], label="mae")
-            plt.plot(history.history["val_mae"], label="val_mae")
-            plt.legend()
-            plt.savefig("mae.png")
-
-            plt.plot(history.history["loss"])
-            plt.plot(history.history["val_loss"])
-            plt.title("Model loss")
+            plt.figure(figsize=(10, 5))
+            plt.plot(history.history["loss"], label="Training Loss")
+            plt.plot(history.history["val_loss"], label="Validation Loss")
+            plt.xlabel("Epochs")
             plt.ylabel("Loss")
-            plt.xlabel("Epoch")
-            plt.legend(["Train", "Validation"], loc="upper right")
-            plt.savefig("epoch.png")
+            plt.title("Training and Validation Loss")
+            plt.legend()
+            plt.show()
 
         scores = model.evaluate(X_test, y_test, verbose=0)
         print("Mean Squared Error : ", scores[1])
@@ -291,7 +297,7 @@ def main():
         # make predictions
         y_pred = model.predict(X_test)
         r2 = r2_score(y_test, y_pred)
-        print("r2 score: ", r2.round(2) * 100, "%")
+        print("r2 score: ", r2.round(5) * 100, "%")
 
         if USE_PLOT_FLAG:
             y_pred = y_pred.flatten()
