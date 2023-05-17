@@ -270,15 +270,6 @@ def main():
 
         model.summary()
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(history.history["loss"], label="Training Loss")
-        plt.plot(history.history["val_loss"], label="Validation Loss")
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.title("Training and Validation Loss")
-        plt.legend()
-        plt.show()
-
         if USE_PLOT_FLAG:
             # plot the loss and validation loss of the dataset
             plt.figure(figsize=(10, 5))
