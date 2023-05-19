@@ -71,7 +71,7 @@ def enrich_with_ap_coords(df, ap_coords):
     i = 0
     for col in df.columns:
         newarray.append(col)
-        if "NU-AP" in col and start <= i <= start + NUM_APS_5 + NUM_APS_6:
+        if "AP05" in col or "AP06" in col:
             newarray.append(col + "_x")
             newarray.append(col + "_y")
             newarray.append(col + "_z")
@@ -80,16 +80,14 @@ def enrich_with_ap_coords(df, ap_coords):
     newdf = pd.DataFrame(columns=newarray)
     for index, row in df.iterrows():
         newrow = []
-        i = 0
         ap_coords_index = 0
-        for item in row:
-            newrow.append(item)
-            if start <= i <= start + NUM_APS_5 + NUM_APS_6:
+        for col_name in df.columns:
+            newrow.append(row[col_name])
+            if ('AP05' in col_name or 'AP06' in col_name) and row[col_name] in row.values:
                 newrow.append(ap_coords.iloc[ap_coords_index]["x"])
                 newrow.append(ap_coords.iloc[ap_coords_index]["y"])
                 newrow.append(ap_coords.iloc[ap_coords_index]["z"])
                 ap_coords_index += 1
-            i += 1
         newdf.loc[index] = newrow
     return newdf
 

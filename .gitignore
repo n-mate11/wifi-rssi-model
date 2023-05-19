@@ -2,3 +2,5 @@
 .pytest_cache
 __pycache__
 tests/__pycache__
+.env
+.converage
