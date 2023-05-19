@@ -65,9 +65,6 @@ def load_data(folder):
 
 def enrich_with_ap_coords(df, ap_coords):
     newarray = []
-    start = 114
-    NUM_APS_5 = 28
-    NUM_APS_6 = 34
     i = 0
     for col in df.columns:
         newarray.append(col)
