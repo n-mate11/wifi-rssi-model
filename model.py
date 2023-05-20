@@ -53,7 +53,7 @@ USE_DIRECTION_FLAG = True
 TRAIN_NN_FLAG = True
 TRAIN_ML_FLAG = False
 USE_PLOT_FLAG = False
-USE_COORDS_FLAG = False
+USE_COORDS_FLAG = True
 
 
 def load_data(folder):
@@ -213,7 +213,7 @@ def main():
     df = pd.concat([DF_F5, DF_F6], ignore_index=True)
 
     if USE_COORDS_FLAG:
-        ap_coords = pd.read_csv("data/AP_dummy.csv", header=0)
+        ap_coords = pd.read_csv("data/AP.csv", header=0)
         df = enrich_with_ap_coords(df, ap_coords)
 
     # add directions with one hot encoding
