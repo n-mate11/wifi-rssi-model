@@ -8,7 +8,7 @@ from sklearn.metrics import (
     mean_absolute_error,
     median_absolute_error,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
@@ -50,10 +50,10 @@ VALIDATION_SPLIT = 0.2
 
 # flags
 USE_DIRECTION_FLAG = True
-TRAIN_NN_FLAG = True
-TRAIN_ML_FLAG = False
+TRAIN_NN_FLAG = False
+TRAIN_ML_FLAG = True
 USE_PLOT_FLAG = False
-USE_COORDS_FLAG = True
+USE_COORDS_FLAG = False
 
 
 def load_data(folder):
@@ -78,7 +78,9 @@ def enrich_with_ap_coords(df, ap_coords):
         ap_coords_index = 0
         for col_name in df.columns:
             newrow.append(row[col_name])
-            if ('AP05' in col_name or 'AP06' in col_name) and row[col_name] in row.values:
+            if ("AP05" in col_name or "AP06" in col_name) and row[
+                col_name
+            ] in row.values:
                 newrow.append(ap_coords.iloc[ap_coords_index]["x"])
                 newrow.append(ap_coords.iloc[ap_coords_index]["y"])
                 newrow.append(ap_coords.iloc[ap_coords_index]["z"])
@@ -87,12 +89,12 @@ def enrich_with_ap_coords(df, ap_coords):
     return newdf
 
 
-def split_data(df, test_size=0.2, random_state=0):
-    X = df.loc[:, ~df.columns.isin(["x", "y", "z"])]
+def split_data(df, target=["x", "y", "z"], test_size=0.2, random_state=0):
+    X = df.loc[:, ~df.columns.isin(target)]
     if TRAIN_NN_FLAG:
-        y = df[["x", "y", "z"]]
-    else:
-        y = df[["x"]]
+        y = df[target]
+    if TRAIN_ML_FLAG:
+        y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
@@ -130,6 +132,7 @@ def normalize_xyz(df):
         elif "z" == column or "_z" in column:
             df[column] = df[column].apply(lambda x: x / Z_MAX)
     return df
+
 
 def preprocess_data(df):
     df = normalize_rssi(df)
@@ -185,6 +188,23 @@ def print_results(eval_tuple, model_name):
     print("MDAE: ", eval_tuple[3])
 
 
+def grid_search(estimator, params, X, y):
+    grid_search = GridSearchCV(
+        estimator=estimator,
+        param_grid=params,
+        scoring="neg_mean_squared_error",
+        cv=10,
+        return_train_score=True,
+    )
+    grid_search.fit(X, y)
+    print("best_params_", grid_search.best_params_)
+    print("best_estimator_", grid_search.best_estimator_)
+    print("best_score_", grid_search.best_score_)
+    cvres = grid_search.cv_results_
+    for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
+        print(np.sqrt(-mean_score), params)
+
+
 def main():
     # load the data
     DF_F5 = load_data(F5_PATH)
@@ -203,26 +223,30 @@ def main():
 
     if TRAIN_ML_FLAG:
         # train and evaluate the models
-        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=X_COL)
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=["x"])
         evaluate_model(y_test, y_pred_RF, "Random Forest")
         evaluate_model(y_test, y_pred_DT, "Decision Tree")
         evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
         evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         print("--------------------------------------------------")
 
-        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Y_COL)
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=["y"])
         evaluate_model(y_test, y_pred_RF, "Random Forest")
         evaluate_model(y_test, y_pred_DT, "Decision Tree")
         evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
         evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         print("--------------------------------------------------")
 
-        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=Z_COL)
+        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=["z"])
         evaluate_model(y_test, y_pred_RF, "Random Forest")
         evaluate_model(y_test, y_pred_DT, "Decision Tree")
         evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
         evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         print("--------------------------------------------------")
+
+        # grid_search(DecisionTreeRegressor(), df, df["x"])
+        # grid_search(SVR(), df, df["x"])
+        # grid_search(KNeighborsRegressor(), df, df["x"])
 
     if TRAIN_NN_FLAG:
         # split data
