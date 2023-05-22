@@ -16,7 +16,7 @@ from sklearn.neighbors import KNeighborsRegressor
 
 import tensorflow as tf
 from tensorflow import keras
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Dropout, BatchNormalization
 from keras.models import Sequential
 
 import matplotlib.pyplot as plt
@@ -65,14 +65,12 @@ def load_data(folder):
 
 def enrich_with_ap_coords(df, ap_coords):
     newarray = []
-    i = 0
     for col in df.columns:
         newarray.append(col)
         if "AP05" in col or "AP06" in col:
             newarray.append(col + "_x")
             newarray.append(col + "_y")
             newarray.append(col + "_z")
-        i += 1
 
     newdf = pd.DataFrame(columns=newarray)
     for index, row in df.iterrows():
@@ -125,29 +123,15 @@ def normalize_rssi(df):
 
 def normalize_xyz(df):
     for column in df.columns:
-        if "x" == column:
+        if "x" == column or "_x" in column:
             df[column] = df[column].apply(lambda x: x / X_MAX)
-        elif "y" == column:
+        elif "y" == column or "_y" in column:
             df[column] = df[column].apply(lambda x: x / Y_MAX)
-        elif "z" == column:
+        elif "z" == column or "_z" in column:
             df[column] = df[column].apply(lambda x: x / Z_MAX)
     return df
-
-
-def normalize_ap_coords(df):
-    for column in df.columns:
-        if "_x" in column:
-            df[column] = df[column].apply(lambda x: x / X_MAX)
-        elif "_y" in column:
-            df[column] = df[column].apply(lambda x: x / Y_MAX)
-        elif "_z" in column:
-            df[column] = df[column].apply(lambda x: x / Z_MAX)
-    return df
-
 
 def preprocess_data(df):
-    if USE_COORDS_FLAG:
-        df = normalize_ap_coords(df)
     df = normalize_rssi(df)
     df = normalize_xyz(df)
     return df
@@ -244,24 +228,44 @@ def main():
         # split data
         X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
 
-        input_dim = X_train.shape[1]
-        model = Sequential()
-        model.add(Dense(256, input_dim=input_dim, activation="relu"))
-        model.add(Dropout(0.1))
-        model.add(Dense(128, input_dim=input_dim, activation="relu"))
-        model.add(Dropout(0.1))
-        model.add(Dense(3, activation="linear"))
-        model.compile(
-            loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
-        )
-        history = model.fit(
-            X_train,
-            y_train,
-            epochs=EPOCHS,
-            batch_size=BATCH_SIZE,
-            validation_split=VALIDATION_SPLIT,
-            shuffle=True,
-        )
+        if USE_COORDS_FLAG:
+            input_dim = X_train.shape[1]
+            model = Sequential()
+            model.add(BatchNormalization(input_shape=(input_dim,)))
+            model.add(Dense(128, input_dim=input_dim, activation="relu"))
+            model.add(Dense(64, input_dim=input_dim, activation="relu"))
+            model.add(Dense(16, input_dim=input_dim, activation="relu"))
+            model.add(Dense(3, activation="linear"))
+            model.compile(
+                loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
+            )
+            history = model.fit(
+                X_train,
+                y_train,
+                epochs=EPOCHS,
+                batch_size=BATCH_SIZE,
+                validation_split=VALIDATION_SPLIT,
+                shuffle=True,
+            )
+        else:
+            input_dim = X_train.shape[1]
+            model = Sequential()
+            model.add(Dense(256, input_dim=input_dim, activation="relu"))
+            model.add(Dropout(0.1))
+            model.add(Dense(128, input_dim=input_dim, activation="relu"))
+            model.add(Dropout(0.1))
+            model.add(Dense(3, activation="linear"))
+            model.compile(
+                loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
+            )
+            history = model.fit(
+                X_train,
+                y_train,
+                epochs=EPOCHS,
+                batch_size=BATCH_SIZE,
+                validation_split=VALIDATION_SPLIT,
+                shuffle=True,
+            )
 
         model.summary()
 
