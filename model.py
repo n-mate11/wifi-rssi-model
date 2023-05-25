@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.multioutput import MultiOutputRegressor
 
 import tensorflow as tf
 from tensorflow import keras
@@ -50,9 +51,9 @@ VALIDATION_SPLIT = 0.2
 
 # flags
 USE_DIRECTION_FLAG = True
-TRAIN_NN_FLAG = True
-TRAIN_ML_FLAG = False
-USE_PLOT_FLAG = True
+TRAIN_NN_FLAG = False
+TRAIN_ML_FLAG = True
+USE_PLOT_FLAG = False
 USE_COORDS_FLAG = False
 
 
@@ -153,23 +154,10 @@ def add_directions(df):
     return df
 
 
-def train(df, target):
-    X_train, X_test, y_train, y_test = split_data(
-        df, target=target, test_size=0.2, random_state=0
-    )
-    RF = RandomForestRegressor()
-    DT = DecisionTreeRegressor()
-    SVM = SVR()
-    KNN = KNeighborsRegressor()
-    RF.fit(X_train, y_train)
-    DT.fit(X_train, y_train)
-    SVM.fit(X_train, y_train)
-    KNN.fit(X_train, y_train)
-    y_pred_RF = RF.predict(X_test)
-    y_pred_DT = DT.predict(X_test)
-    y_pred_SVM = SVM.predict(X_test)
-    y_pred_KNN = KNN.predict(X_test)
-    return y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test
+def train(df, regressor):
+    X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
+    MOR = MultiOutputRegressor(regressor)
+    return y_test, MOR.fit(X_train, y_train).predict(X_test)
 
 
 def evaluate_model(y_test, y_pred, name):
@@ -223,26 +211,24 @@ def main():
 
     if TRAIN_ML_FLAG:
         # train and evaluate the models
-        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=["x"])
-        evaluate_model(y_test, y_pred_RF, "Random Forest")
-        evaluate_model(y_test, y_pred_DT, "Decision Tree")
-        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
-        print("--------------------------------------------------")
+        RF = RandomForestRegressor()
+        y_test_RF, y_pred_RF = train(df, RF)
+        evaluate_model(y_test_RF, y_pred_RF, "Random Forest")
 
-        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=["y"])
-        evaluate_model(y_test, y_pred_RF, "Random Forest")
-        evaluate_model(y_test, y_pred_DT, "Decision Tree")
-        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         print("--------------------------------------------------")
+        DT = DecisionTreeRegressor()
+        y_test_DT, y_pred_DT = train(df, DT)
+        evaluate_model(y_test_DT, y_pred_DT, "Decision Tree")
 
-        y_pred_RF, y_pred_DT, y_pred_SVM, y_pred_KNN, y_test = train(df, target=["z"])
-        evaluate_model(y_test, y_pred_RF, "Random Forest")
-        evaluate_model(y_test, y_pred_DT, "Decision Tree")
-        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
-        evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         print("--------------------------------------------------")
+        SVM = SVR()
+        y_test_SVM, y_pred_SVM = train(df, SVM)
+        evaluate_model(y_test_SVM, y_pred_SVM, "Support Vector Machine")
+
+        print("--------------------------------------------------")
+        KNN = KNeighborsRegressor()
+        y_test_KNN, y_pred_KNN = train(df, KNN)
+        evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
 
         # grid_search(DecisionTreeRegressor(), df, df["x"])
         # grid_search(SVR(), df, df["x"])
