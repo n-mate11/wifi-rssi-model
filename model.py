@@ -50,9 +50,9 @@ VALIDATION_SPLIT = 0.2
 
 # flags
 USE_DIRECTION_FLAG = True
-TRAIN_NN_FLAG = False
-TRAIN_ML_FLAG = True
-USE_PLOT_FLAG = False
+TRAIN_NN_FLAG = True
+TRAIN_ML_FLAG = False
+USE_PLOT_FLAG = True
 USE_COORDS_FLAG = False
 
 
@@ -314,16 +314,20 @@ def main():
         print("r2 score: ", r2.round(5) * 100, "%")
 
         if USE_PLOT_FLAG:
-            y_pred = y_pred.flatten()
-            plt.scatter(y_test, y_pred)
-            plt.axes(aspect="equal")
-            plt.xlabel("True values")
-            plt.ylabel("Predicted values")
-            plt.xlim([0, 50000])
-            plt.ylim([0, 50000])
-            plt.plot([0, 50000], [0, 50000])
-            plt.plot()
-            plt.savefig("scatter.png")
+            fig = plt.figure(figsize=(10, 7))
+            ax = plt.axes(projection="3d")
+
+            ax.scatter3D(
+                y_test["x"], y_test["y"], y_test["z"], color="blue", label="y_test"
+            )
+            ax.scatter3D(
+                y_pred[:, 0], y_pred[:, 1], y_pred[:, 2], color="red", label="y_pred"
+            )
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            ax.set_title("Actual values vs Predicted values")
+            plt.show()
 
 
 if __name__ == "__main__":
