@@ -16,7 +16,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
 # flags
-USE_DIRECTION_FLAG = True
+USE_DIRECTION_FLAG = False
 TRAIN_NN_FLAG = False
 TRAIN_ML_FLAG = True
 USE_PLOT_FLAG = False
@@ -112,10 +112,7 @@ def normalize_rssi(df):
             and column != "x"
             and column != "y"
             and column != "z"
-            and column != "North"
-            and column != "East"
-            and column != "South"
-            and column != "West"
+            and column != "direction"
         ):
             df[column] = df[column].apply(
                 lambda x: (x - RSSI_MIN) / (RSSI_MAX - RSSI_MIN)
@@ -136,22 +133,28 @@ def normalize_xyz(df):
     return df
 
 
+def normalize_directions(df):
+    for column in df.columns:
+        if "direction" in column:
+            df[column] = df[column].apply(lambda x: x / 360)
+    return df
+
+
 def preprocess_data(df):
     df = normalize_rssi(df)
     df = normalize_xyz(df)
+    if USE_DIRECTION_FLAG:
+        df = normalize_directions(df)
     return df
 
 
 def add_directions(df):
-    df["North"] = 0
-    df["East"] = 0
-    df["South"] = 0
-    df["West"] = 0
+    df["direction"] = 0
     for i in range(0, len(df), 60):
-        df["North"].iloc[i : i + 15] = 1
-        df["East"].iloc[i + 15 : i + 30] = 1
-        df["South"].iloc[i + 30 : i + 45] = 1
-        df["West"].iloc[i + 45 : i + 60] = 1
+        df["direction"].iloc[i : i + 15] = 0
+        df["direction"].iloc[i + 15 : i + 30] = 90
+        df["direction"].iloc[i + 30 : i + 45] = 180
+        df["direction"].iloc[i + 45 : i + 60] = 270
     return df
 
 
@@ -225,14 +228,13 @@ def main():
         ap_coords = pd.read_csv("data/AP.csv", header=0)
         df = enrich_with_ap_coords(df, ap_coords)
 
-    # add directions with one hot encoding
-    df = add_directions(df)
+    if USE_DIRECTION_FLAG:
+        df = add_directions(df)
 
     # preprocess the data
     df = preprocess_data(df)
 
     if TRAIN_ML_FLAG:
-        # train and evaluate the models
         RF = RandomForestRegressor(max_depth=55, max_features="sqrt", n_estimators=200)
         y_test_RF, y_pred_RF = train(df, RF)
         evaluate_model(y_test_RF, y_pred_RF, "Random Forest")
@@ -318,8 +320,8 @@ def main():
             plt.show()
 
         scores = model.evaluate(X_test, y_test, verbose=0)
-        print("Mean Squared Error : ", scores[1])
-        print("Mean Absolute Error : ", scores[2])
+        print("Mean Squared Error: ", scores[1])
+        print("Mean Absolute Error: ", scores[2])
 
         # make predictions
         y_pred = model.predict(X_test)
