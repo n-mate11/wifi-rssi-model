@@ -15,10 +15,18 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
-import tensorflow as tf
-from tensorflow import keras
-from keras.layers import Dense, Dropout, BatchNormalization
-from keras.models import Sequential
+# flags
+USE_DIRECTION_FLAG = True
+TRAIN_NN_FLAG = False
+TRAIN_ML_FLAG = True
+USE_PLOT_FLAG = False
+USE_COORDS_FLAG = False
+
+if TRAIN_NN_FLAG:
+    import tensorflow as tf
+    from tensorflow import keras
+    from keras.layers import Dense, Dropout, BatchNormalization
+    from keras.models import Sequential
 
 import matplotlib.pyplot as plt
 
@@ -48,13 +56,6 @@ Z_MAX = 12
 EPOCHS = 200
 BATCH_SIZE = 16
 VALIDATION_SPLIT = 0.2
-
-# flags
-USE_DIRECTION_FLAG = True
-TRAIN_NN_FLAG = False
-TRAIN_ML_FLAG = True
-USE_PLOT_FLAG = False
-USE_COORDS_FLAG = False
 
 
 def load_data(folder):
@@ -157,6 +158,12 @@ def add_directions(df):
 def train(df, regressor):
     X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
     MOR = MultiOutputRegressor(regressor)
+    # if isinstance(regressor, KNeighborsRegressor):
+    #     print("KNeighborsRegressor grid search")
+    #     params = {
+    #         "estimator__leaf_size": [8, 9, 10, 11],
+    #     }
+    # grid_search(MOR, params, X_train, y_train)
     return y_test, MOR.fit(X_train, y_train).predict(X_test)
 
 
@@ -181,8 +188,9 @@ def grid_search(estimator, params, X, y):
         estimator=estimator,
         param_grid=params,
         scoring="neg_mean_squared_error",
-        cv=10,
+        cv=3,
         return_train_score=True,
+        n_jobs=-1,
     )
     grid_search.fit(X, y)
     print("best_params_", grid_search.best_params_)
@@ -191,6 +199,7 @@ def grid_search(estimator, params, X, y):
     cvres = grid_search.cv_results_
     for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
         print(np.sqrt(-mean_score), params)
+    print("--------------------------------------------------")
 
 
 def main():
@@ -211,28 +220,28 @@ def main():
 
     if TRAIN_ML_FLAG:
         # train and evaluate the models
-        RF = RandomForestRegressor()
+        RF = RandomForestRegressor(max_depth=55, max_features="sqrt", n_estimators=200)
         y_test_RF, y_pred_RF = train(df, RF)
         evaluate_model(y_test_RF, y_pred_RF, "Random Forest")
 
         print("--------------------------------------------------")
-        DT = DecisionTreeRegressor()
+        DT = DecisionTreeRegressor(
+            max_depth=45, min_samples_leaf=2, min_samples_split=6
+        )
         y_test_DT, y_pred_DT = train(df, DT)
         evaluate_model(y_test_DT, y_pred_DT, "Decision Tree")
 
         print("--------------------------------------------------")
-        SVM = SVR()
+        SVM = SVR(C=2, degree=0)
         y_test_SVM, y_pred_SVM = train(df, SVM)
         evaluate_model(y_test_SVM, y_pred_SVM, "Support Vector Machine")
 
         print("--------------------------------------------------")
-        KNN = KNeighborsRegressor()
+        KNN = KNeighborsRegressor(
+            algorithm="ball_tree", leaf_size=8, weights="distance"
+        )
         y_test_KNN, y_pred_KNN = train(df, KNN)
         evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
-
-        # grid_search(DecisionTreeRegressor(), df, df["x"])
-        # grid_search(SVR(), df, df["x"])
-        # grid_search(KNeighborsRegressor(), df, df["x"])
 
     if TRAIN_NN_FLAG:
         # split data
