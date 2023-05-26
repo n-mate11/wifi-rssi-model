@@ -202,6 +202,19 @@ def grid_search(estimator, params, X, y):
     print("--------------------------------------------------")
 
 
+def plot_3d(y_test, y_pred):
+    fig = plt.figure(figsize=(10, 7))
+    ax = plt.axes(projection="3d")
+
+    ax.scatter3D(y_test["x"], y_test["y"], y_test["z"], color="blue", label="y_test")
+    ax.scatter3D(y_pred[:, 0], y_pred[:, 1], y_pred[:, 2], color="red", label="y_pred")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.set_title("Actual values vs Predicted values")
+    plt.show()
+
+
 def main():
     # load the data
     DF_F5 = load_data(F5_PATH)
@@ -242,6 +255,11 @@ def main():
         )
         y_test_KNN, y_pred_KNN = train(df, KNN)
         evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
+
+        plot_3d(y_test_RF, y_pred_RF)
+        plot_3d(y_test_DT, y_pred_DT)
+        plot_3d(y_test_SVM, y_pred_SVM)
+        plot_3d(y_test_KNN, y_pred_KNN)
 
     if TRAIN_NN_FLAG:
         # split data
@@ -309,20 +327,7 @@ def main():
         print("r2 score: ", r2.round(5) * 100, "%")
 
         if USE_PLOT_FLAG:
-            fig = plt.figure(figsize=(10, 7))
-            ax = plt.axes(projection="3d")
-
-            ax.scatter3D(
-                y_test["x"], y_test["y"], y_test["z"], color="blue", label="y_test"
-            )
-            ax.scatter3D(
-                y_pred[:, 0], y_pred[:, 1], y_pred[:, 2], color="red", label="y_pred"
-            )
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
-            ax.set_zlabel("z")
-            ax.set_title("Actual values vs Predicted values")
-            plt.show()
+            plot_3d(y_test, y_pred)
 
 
 if __name__ == "__main__":
