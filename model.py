@@ -158,18 +158,6 @@ def add_directions(df):
     return df
 
 
-def train(df, regressor):
-    X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
-    MOR = MultiOutputRegressor(regressor)
-    # if isinstance(regressor, KNeighborsRegressor):
-    #     print("KNeighborsRegressor grid search")
-    #     params = {
-    #         "estimator__leaf_size": [8, 9, 10, 11],
-    #     }
-    # grid_search(MOR, params, X_train, y_train)
-    return y_test, MOR.fit(X_train, y_train).predict(X_test)
-
-
 def evaluate_model(y_test, y_pred, name):
     r2 = r2_score(y_test, y_pred)
     mse = mean_squared_error(y_test, y_pred)
@@ -234,34 +222,101 @@ def main():
     # preprocess the data
     df = preprocess_data(df)
 
+    X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
+
+    floors_train = y_train[["z"]]
+    xy_train = y_train[["x", "y"]]
+
     if TRAIN_ML_FLAG:
-        RF = RandomForestRegressor(max_depth=55, max_features="sqrt", n_estimators=200)
-        y_test_RF, y_pred_RF = train(df, RF)
-        evaluate_model(y_test_RF, y_pred_RF, "Random Forest")
-
-        print("--------------------------------------------------")
-        DT = DecisionTreeRegressor(
-            max_depth=45, min_samples_leaf=2, min_samples_split=6
+        RF_xy = RandomForestRegressor(
+            bootstrap=False,
+            criterion="absolute_error",
+            max_depth=75,
+            max_features="sqrt",
+            n_estimators=50,
         )
-        y_test_DT, y_pred_DT = train(df, DT)
-        evaluate_model(y_test_DT, y_pred_DT, "Decision Tree")
-
-        print("--------------------------------------------------")
-        SVM = SVR(C=2, degree=0)
-        y_test_SVM, y_pred_SVM = train(df, SVM)
-        evaluate_model(y_test_SVM, y_pred_SVM, "Support Vector Machine")
-
-        print("--------------------------------------------------")
-        KNN = KNeighborsRegressor(
-            algorithm="ball_tree", leaf_size=8, weights="distance"
+        RF_z = RandomForestRegressor(
+            bootstrap=False,
+            criterion="friedman_mse",
+            max_depth=60,
+            max_features="sqrt",
+            n_estimators=255,
         )
-        y_test_KNN, y_pred_KNN = train(df, KNN)
-        evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
+        MOR = MultiOutputRegressor(RF_xy)
 
-        plot_3d(y_test_RF, y_pred_RF)
-        plot_3d(y_test_DT, y_pred_DT)
-        plot_3d(y_test_SVM, y_pred_SVM)
-        plot_3d(y_test_KNN, y_pred_KNN)
+        y_pred_RF_xy = MOR.fit(X_train, xy_train).predict(X_test)
+        y_pred_RF_z = RF_z.fit(X_train, floors_train.values.ravel()).predict(X_test)
+
+        y_pred_RF = np.concatenate((y_pred_RF_xy, y_pred_RF_z.reshape(-1, 1)), axis=1)
+
+        # evaluate_model(y_test[["x", "y"]], y_pred_RF_xy, "Random Forest")
+        # print("--------------------------------------------------")
+        # evaluate_model(y_test[["z"]], y_pred_RF_z, "Random Forest")
+
+        evaluate_model(y_test, y_pred_RF, "Random Forest")
+
+        print("--------------------------------------------------")
+
+        DT_xy = DecisionTreeRegressor(
+            criterion="poisson",
+            max_depth=75,
+            min_samples_leaf=2,
+            ccp_alpha=0.0,
+            min_impurity_decrease=0,
+            max_leaf_nodes=280,
+        )
+        DT_z = DecisionTreeRegressor(
+            criterion="squared_error",
+            max_depth=95,
+            min_samples_leaf=2,
+            max_features=0.2,
+            min_samples_split=6,
+            min_impurity_decrease=0,
+            max_leaf_nodes=180,
+        )
+        MOR = MultiOutputRegressor(DT_xy)
+
+        y_pred_DT_xy = MOR.fit(X_train, xy_train).predict(X_test)
+        y_pred_DT_z = DT_z.fit(X_train, floors_train.values.ravel()).predict(X_test)
+
+        y_pred_DT = np.concatenate((y_pred_DT_xy, y_pred_DT_z.reshape(-1, 1)), axis=1)
+
+        # evaluate_model(y_test[["x", "y"]], y_pred_DT_xy, "Decision Tree")
+        # print("--------------------------------------------------")
+        # evaluate_model(y_test[["z"]], y_pred_DT_z, "Decision Tree")
+
+        evaluate_model(y_test, y_pred_DT, "Decision Tree")
+
+        # DT = DecisionTreeRegressor(
+        #     max_depth=45, min_samples_leaf=2, min_samples_split=6
+        # )
+        # grid_search(
+        #     DT_z,
+        #     {
+        #         "max_leaf_nodes": [155, 160, 165, 170, 175, 180, 185, 190, 195],
+        #     },
+        #     X_train,
+        #     floors_train,
+        # )
+        # y_test_DT, y_pred_DT, y_z_pred_DT = train(df, DT)
+        # evaluate_model(y_test_DT, y_pred_DT, "Decision Tree")
+
+        # print("--------------------------------------------------")
+        # SVM = SVR(C=2, degree=0)
+        # y_test_SVM, y_pred_SVM, y_z_pred_SVM = train(df, SVM)
+        # evaluate_model(y_test_SVM, y_pred_SVM, "Support Vector Machine")
+
+        # print("--------------------------------------------------")
+        # KNN = KNeighborsRegressor(
+        #     algorithm="ball_tree", leaf_size=8, weights="distance"
+        # )
+        # y_test_KNN, y_pred_KNN, y_z_pred_KNN = train(df, KNN)
+        # evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
+
+        # plot_3d(y_test, y_pred_RF)
+        # plot_3d(y_test, y_pred_DT)
+        # plot_3d(y_test, y_pred_SVM)
+        # plot_3d(y_test, y_pred_KNN)
 
     if TRAIN_NN_FLAG:
         # split data
