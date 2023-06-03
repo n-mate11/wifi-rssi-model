@@ -287,6 +287,8 @@ def main():
 
         evaluate_model(y_test, y_pred_DT, "Decision Tree")
 
+        print("--------------------------------------------------")
+
         SVM_xy = SVR(degree=1, C=1, epsilon=0.0001, shrinking=False, verbose=True)
         SVM_z = SVR(degree=1, C=0.2, epsilon=0.0001, verbose=True)
         MOR = MultiOutputRegressor(SVM_xy)
