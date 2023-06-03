@@ -287,36 +287,50 @@ def main():
 
         evaluate_model(y_test, y_pred_DT, "Decision Tree")
 
-        # DT = DecisionTreeRegressor(
-        #     max_depth=45, min_samples_leaf=2, min_samples_split=6
-        # )
-        # grid_search(
-        #     DT_z,
-        #     {
-        #         "max_leaf_nodes": [155, 160, 165, 170, 175, 180, 185, 190, 195],
-        #     },
-        #     X_train,
-        #     floors_train,
-        # )
-        # y_test_DT, y_pred_DT, y_z_pred_DT = train(df, DT)
-        # evaluate_model(y_test_DT, y_pred_DT, "Decision Tree")
+        SVM_xy = SVR(degree=1, C=1, epsilon=0.0001, shrinking=False, verbose=True)
+        SVM_z = SVR(degree=1, C=0.2, epsilon=0.0001, verbose=True)
+        MOR = MultiOutputRegressor(SVM_xy)
 
+        y_pred_SVM_xy = MOR.fit(X_train, xy_train).predict(X_test)
+        y_pred_SVM_z = SVM_z.fit(X_train, floors_train.values.ravel()).predict(X_test)
+
+        y_pred_SVM = np.concatenate(
+            (y_pred_SVM_xy, y_pred_SVM_z.reshape(-1, 1)), axis=1
+        )
+
+        # evaluate_model(y_test[["x", "y"]], y_pred_SVM_xy, "Support Vector Machine")
         # print("--------------------------------------------------")
-        # SVM = SVR(C=2, degree=0)
-        # y_test_SVM, y_pred_SVM, y_z_pred_SVM = train(df, SVM)
-        # evaluate_model(y_test_SVM, y_pred_SVM, "Support Vector Machine")
+        # evaluate_model(y_test[["z"]], y_pred_SVM_z, "Support Vector Machine")
 
+        evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+
+        print("--------------------------------------------------")
+
+        KNN_xy = KNeighborsRegressor(
+            n_neighbors=7, weights="distance", leaf_size=1, p=1
+        )
+        KNN_z = KNeighborsRegressor(
+            algorithm="ball_tree", leaf_size=1, n_neighbors=7, p=1, weights="distance"
+        )
+        MOR = MultiOutputRegressor(KNN_xy)
+
+        y_pred_KNN_xy = MOR.fit(X_train, xy_train).predict(X_test)
+        y_pred_KNN_z = KNN_z.fit(X_train, floors_train.values.ravel()).predict(X_test)
+
+        y_pred_KNN = np.concatenate(
+            (y_pred_KNN_xy, y_pred_KNN_z.reshape(-1, 1)), axis=1
+        )
+
+        # evaluate_model(y_test[["x", "y"]], y_pred_KNN_xy, "K Nearest Neighbors")
         # print("--------------------------------------------------")
-        # KNN = KNeighborsRegressor(
-        #     algorithm="ball_tree", leaf_size=8, weights="distance"
-        # )
-        # y_test_KNN, y_pred_KNN, y_z_pred_KNN = train(df, KNN)
-        # evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
+        # evaluate_model(y_test[["z"]], y_pred_KNN_z, "K Nearest Neighbors")
 
-        # plot_3d(y_test, y_pred_RF)
-        # plot_3d(y_test, y_pred_DT)
-        # plot_3d(y_test, y_pred_SVM)
-        # plot_3d(y_test, y_pred_KNN)
+        evaluate_model(y_test, y_pred_KNN, "K Nearest Neighbors")
+
+        plot_3d(y_test, y_pred_RF)
+        plot_3d(y_test, y_pred_DT)
+        plot_3d(y_test, y_pred_SVM)
+        plot_3d(y_test, y_pred_KNN)
 
     if TRAIN_NN_FLAG:
         # split data
