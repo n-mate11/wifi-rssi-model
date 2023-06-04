@@ -55,8 +55,8 @@ X_MAX = 70
 Y_MAX = 70
 Z_MAX = 12
 
-EPOCHS = 200
-BATCH_SIZE = 16
+MAX_EPOCHS = 205
+MAX_BATCH_SIZE = 128
 VALIDATION_SPLIT = 0.2
 
 
@@ -255,8 +255,10 @@ class MyHyperModel(kt.HyperModel):
         return model.fit(
             *args,
             **kwargs,
-            batch_size=hp.Int("batch_size", min_value=8, max_value=128, step=8),
-            epochs=hp.Int("epochs", min_value=5, max_value=205, step=10),
+            batch_size=hp.Int(
+                "batch_size", min_value=8, max_value=MAX_BATCH_SIZE, step=8
+            ),
+            epochs=hp.Int("epochs", min_value=5, max_value=MAX_EPOCHS, step=10),
             shuffle=hp.Boolean("shuffle"),
         )
 
@@ -340,7 +342,6 @@ def main():
                 executions_per_trial=3,
                 directory="hypermodels",
                 project_name="keras_tuner",
-                overwrite=True,
             )
 
             tuner.search(
@@ -356,11 +357,22 @@ def main():
             best_hyperparameters = tuner.get_best_hyperparameters(num_trials=1)[0]
 
             # Build the model with the best hp.
-            model = hyperModel.build(best_hyperparameters)
+            model = tuner.hypermodel.build(best_hyperparameters)
             # Train the model.
             history = model.fit(
                 X_train,
                 y_train,
+                validation_split=VALIDATION_SPLIT,
+                validation_data=(X_test, y_test),
+            )
+
+            # re-train the model with the best hyperparameters
+            model.fit(
+                X_train,
+                y_train,
+                epochs=best_hyperparameters.values["epochs"],
+                batch_size=best_hyperparameters.values["batch_size"],
+                shuffle=best_hyperparameters.values["shuffle"],
                 validation_split=VALIDATION_SPLIT,
                 validation_data=(X_test, y_test),
             )
