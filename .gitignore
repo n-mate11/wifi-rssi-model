@@ -4,4 +4,3 @@ __pycache__
 tests/__pycache__
 .env
 .converage
-hypermodels
