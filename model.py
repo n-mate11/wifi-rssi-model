@@ -17,16 +17,18 @@ from sklearn.multioutput import MultiOutputRegressor
 
 # flags
 USE_DIRECTION_FLAG = False
-TRAIN_NN_FLAG = False
-TRAIN_ML_FLAG = True
+TRAIN_NN_FLAG = True
+TRAIN_ML_FLAG = False
 USE_PLOT_FLAG = False
 USE_COORDS_FLAG = False
 
 if TRAIN_NN_FLAG:
     import tensorflow as tf
     from tensorflow import keras
-    from keras.layers import Dense, Dropout, BatchNormalization
+    from keras.layers import Dense, Dropout, BatchNormalization, Flatten, Input
     from keras.models import Sequential
+    from keras.optimizers import Adam
+    import keras_tuner as kt
 
 import matplotlib.pyplot as plt
 
@@ -218,6 +220,47 @@ def plot_3d(y_test, y_pred):
     plt.show()
 
 
+class MyHyperModel(kt.HyperModel):
+    def build(self, hp):
+        model = Sequential()
+        model.add(Flatten())
+        # Wetther to use normalization
+        if hp.Boolean("normalization"):
+            model.add(BatchNormalization())
+
+        # Tune the number of layers.
+        for i in range(hp.Int("num_layers", 1, 5)):
+            model.add(
+                Dense(
+                    # Tune number of units separately.
+                    units=hp.Int(f"units_{i}", min_value=16, max_value=512, step=32),
+                    activation="relu",
+                )
+            )
+        if hp.Boolean("dropout"):
+            model.add(Dropout(rate=0.25))
+        model.add(Dense(units=3, activation="linear"))
+
+        # optimize learning rate
+        hp_learning_rate = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4])
+        model.compile(
+            optimizer=Adam(learning_rate=hp_learning_rate),
+            loss="mean_squared_error",
+            metrics=["mse", "mae"],
+        )
+
+        return model
+
+    def fit(self, hp, model, *args, **kwargs):
+        return model.fit(
+            *args,
+            **kwargs,
+            batch_size=hp.Int("batch_size", min_value=8, max_value=128, step=8),
+            epochs=hp.Int("epochs", min_value=5, max_value=205, step=10),
+            shuffle=hp.Boolean("shuffle"),
+        )
+
+
 def main():
     # load the data
     DF_F5 = load_data(F5_PATH)
@@ -266,14 +309,14 @@ def main():
     if TRAIN_NN_FLAG:
         # split data
         X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
+        input_dim = X_train.shape[1]
 
         if USE_COORDS_FLAG:
-            input_dim = X_train.shape[1]
             model = Sequential()
             model.add(BatchNormalization(input_shape=(input_dim,)))
             model.add(Dense(128, input_dim=input_dim, activation="relu"))
-            model.add(Dense(64, input_dim=input_dim, activation="relu"))
-            model.add(Dense(16, input_dim=input_dim, activation="relu"))
+            model.add(Dense(64, activation="relu"))
+            model.add(Dense(16, activation="relu"))
             model.add(Dense(3, activation="linear"))
             model.compile(
                 loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
@@ -284,29 +327,66 @@ def main():
                 epochs=EPOCHS,
                 batch_size=BATCH_SIZE,
                 validation_split=VALIDATION_SPLIT,
+                validation_data=(X_test, y_test),
                 shuffle=True,
             )
         else:
-            input_dim = X_train.shape[1]
-            model = Sequential()
-            model.add(Dense(256, input_dim=input_dim, activation="relu"))
-            model.add(Dropout(0.1))
-            model.add(Dense(128, input_dim=input_dim, activation="relu"))
-            model.add(Dropout(0.1))
-            model.add(Dense(3, activation="linear"))
-            model.compile(
-                loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
+            # keras tuner
+            hyperModel = MyHyperModel()
+            tuner = kt.RandomSearch(
+                hypermodel=hyperModel,
+                objective="mse",
+                max_trials=5,
+                executions_per_trial=3,
+                directory="hypermodels",
+                project_name="keras_tuner",
+                overwrite=True,
             )
+
+            tuner.search(
+                X_train,
+                y_train,
+                validation_split=0.2,
+                validation_data=(X_test, y_test),
+            )
+
+            # get best model
+            best_model = tuner.get_best_models(num_models=1)[0]
+            # get best hyperparameters
+            best_hyperparameters = tuner.get_best_hyperparameters(num_trials=1)[0]
+
+            # Build the model with the best hp.
+            model = hyperModel.build(best_hyperparameters)
+            # Train the model.
             history = model.fit(
                 X_train,
                 y_train,
-                epochs=EPOCHS,
-                batch_size=BATCH_SIZE,
                 validation_split=VALIDATION_SPLIT,
-                shuffle=True,
+                validation_data=(X_test, y_test),
             )
 
-        model.summary()
+            # Evaluate the best model.
+            loss, mse, mae = model.evaluate(X_test, y_test)
+            print("----------------------------------------------")
+            print("Mean Squared Error: ", mse)
+            print("Mean Absolute Error: ", mae)
+
+            # make predictions
+            y_pred = model.predict(X_test)
+            r2 = r2_score(y_test, y_pred)
+            print("----------------------------------------------")
+            print("r2 score: ", r2.round(5) * 100, "%")
+            print("----------------------------------------------")
+
+            # print the summary of the model
+            print(model.summary())
+
+            # print the best hyperparameters
+            print("----------------------------------------------")
+            print("Best Hyperparameters:")
+            print("----------------------------------------------")
+            print(best_hyperparameters.values)
+            print("----------------------------------------------")
 
         if USE_PLOT_FLAG:
             # plot the loss and validation loss of the dataset
@@ -319,17 +399,17 @@ def main():
             plt.legend()
             plt.show()
 
-        scores = model.evaluate(X_test, y_test, verbose=0)
-        print("Mean Squared Error: ", scores[1])
-        print("Mean Absolute Error: ", scores[2])
+        # scores = h_model.evaluate(X_test, y_test, verbose=0)
+        # print("Mean Squared Error: ", scores[1])
+        # print("Mean Absolute Error: ", scores[2])
 
-        # make predictions
-        y_pred = model.predict(X_test)
-        r2 = r2_score(y_test, y_pred)
-        print("r2 score: ", r2.round(5) * 100, "%")
+        # # make predictions
+        # y_pred = h_model.predict(X_test)
+        # r2 = r2_score(y_test, y_pred)
+        # print("r2 score: ", r2.round(5) * 100, "%")
 
-        if USE_PLOT_FLAG:
-            plot_3d(y_test, y_pred)
+        # if USE_PLOT_FLAG:
+        #     plot_3d(y_test, y_pred)
 
 
 if __name__ == "__main__":
