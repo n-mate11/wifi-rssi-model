@@ -326,8 +326,8 @@ def main():
             history = model.fit(
                 X_train,
                 y_train,
-                epochs=EPOCHS,
-                batch_size=BATCH_SIZE,
+                epochs=MAX_EPOCHS,
+                batch_size=MAX_BATCH_SIZE,
                 validation_split=VALIDATION_SPLIT,
                 validation_data=(X_test, y_test),
                 shuffle=True,
@@ -335,8 +335,8 @@ def main():
         else:
             # keras tuner
             hyperModel = MyHyperModel()
-            tuner = kt.RandomSearch(
-                hypermodel=hyperModel,
+            tuner = kt.BayesianOptimization(
+                hyperModel,
                 objective="mse",
                 max_trials=5,
                 executions_per_trial=3,
