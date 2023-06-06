@@ -411,17 +411,8 @@ def main():
             plt.legend()
             plt.show()
 
-        # scores = h_model.evaluate(X_test, y_test, verbose=0)
-        # print("Mean Squared Error: ", scores[1])
-        # print("Mean Absolute Error: ", scores[2])
-
-        # # make predictions
-        # y_pred = h_model.predict(X_test)
-        # r2 = r2_score(y_test, y_pred)
-        # print("r2 score: ", r2.round(5) * 100, "%")
-
-        # if USE_PLOT_FLAG:
-        #     plot_3d(y_test, y_pred)
+        if USE_PLOT_FLAG:
+            plot_3d(y_test, y_pred)
 
 
 if __name__ == "__main__":
