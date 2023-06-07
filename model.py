@@ -105,7 +105,7 @@ def split_data(df, target=["x", "y", "z"], test_size=0.2, random_state=0):
     return X_train, X_test, y_train, y_test
 
 
-def normalize_rssi(df):
+def scale_rssi(df):
     for column in df.columns:
         if (
             "_x" not in column
@@ -124,7 +124,7 @@ def normalize_rssi(df):
     return df
 
 
-def normalize_xyz(df):
+def scale_xyz(df):
     for column in df.columns:
         if "x" == column or "_x" in column:
             df[column] = df[column].apply(lambda x: x / X_MAX)
@@ -135,7 +135,7 @@ def normalize_xyz(df):
     return df
 
 
-def normalize_directions(df):
+def scale_directions(df):
     for column in df.columns:
         if "direction" in column:
             df[column] = df[column].apply(lambda x: x / 360)
@@ -143,10 +143,10 @@ def normalize_directions(df):
 
 
 def preprocess_data(df):
-    df = normalize_rssi(df)
-    df = normalize_xyz(df)
+    df = scale_rssi(df)
+    df = scale_xyz(df)
     if USE_DIRECTION_FLAG:
-        df = normalize_directions(df)
+        df = scale_directions(df)
     return df
 
 
