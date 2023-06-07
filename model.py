@@ -400,6 +400,8 @@ def main():
             print(best_hyperparameters.values)
             print("----------------------------------------------")
 
+            plot_3d(y_test, y_pred)
+
         if USE_PLOT_FLAG:
             # plot the loss and validation loss of the dataset
             plt.figure(figsize=(10, 5))
