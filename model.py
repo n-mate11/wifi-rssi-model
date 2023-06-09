@@ -16,7 +16,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
 # flags
-USE_DIRECTION_FLAG = True
+USE_DIRECTION_FLAG = False
 TRAIN_NN_FLAG = False
 TRAIN_ML_FLAG = True
 USE_PLOT_FLAG = False
@@ -161,14 +161,6 @@ def add_directions(df):
 def train(df, regressor):
     X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
     MOR = MultiOutputRegressor(regressor)
-    # if isinstance(regressor, KNeighborsRegressor):
-    #     print("KNeighborsRegressor grid search")
-    #     params = {
-    #         "estimator__p": [1, 2, 3, 4, 5],
-    #         "estimator__metric": ["euclidean", "manhattan", "chebyshev"],
-    #         "estimator__metric_params": [None, {"w": [0.5, 0.5]}],
-    #     }
-    #     grid_search(MOR, params, X_train, y_train)
     return y_test, MOR.fit(X_train, y_train).predict(X_test)
 
 
@@ -276,37 +268,45 @@ def main():
             )
             y_test_KNN, y_pred_KNN = train(df, KNN)
             evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
-
         else:
             RF = RandomForestRegressor(
-                max_depth=55, max_features="sqrt", n_estimators=200
+                n_estimators=175,
+                max_depth=60,
+                min_samples_split=4,
+                bootstrap=False,
+                max_features="sqrt",
             )
             y_test_RF, y_pred_RF = train(df, RF)
             evaluate_model(y_test_RF, y_pred_RF, "Random Forest")
 
             print("--------------------------------------------------")
             DT = DecisionTreeRegressor(
-                max_depth=45, min_samples_leaf=2, min_samples_split=6
+                criterion="poisson", min_samples_split=5, max_leaf_nodes=230
             )
             y_test_DT, y_pred_DT = train(df, DT)
             evaluate_model(y_test_DT, y_pred_DT, "Decision Tree")
 
             print("--------------------------------------------------")
-            SVM = SVR(C=2, degree=0)
+            SVM = SVR(degree=1, coef0=1e-06, gamma=1, tol=1e-05, C=1)
             y_test_SVM, y_pred_SVM = train(df, SVM)
             evaluate_model(y_test_SVM, y_pred_SVM, "Support Vector Machine")
 
             print("--------------------------------------------------")
             KNN = KNeighborsRegressor(
-                algorithm="ball_tree", leaf_size=8, weights="distance"
+                algorithm="kd_tree",
+                leaf_size=10,
+                n_neighbors=7,
+                weights="distance",
+                metric="manhattan",
+                p=1,
             )
             y_test_KNN, y_pred_KNN = train(df, KNN)
             evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
 
-        plot_3d(y_test_RF, y_pred_RF)
-        plot_3d(y_test_DT, y_pred_DT)
-        plot_3d(y_test_SVM, y_pred_SVM)
-        plot_3d(y_test_KNN, y_pred_KNN)
+        # plot_3d(y_test_RF, y_pred_RF)
+        # plot_3d(y_test_DT, y_pred_DT)
+        # plot_3d(y_test_SVM, y_pred_SVM)
+        # plot_3d(y_test_KNN, y_pred_KNN)
 
     if TRAIN_NN_FLAG:
         # split data
