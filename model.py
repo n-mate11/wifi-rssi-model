@@ -23,8 +23,6 @@ USE_PLOT_FLAG = False
 USE_COORDS_FLAG = True
 
 if TRAIN_NN_FLAG:
-    from keras.layers import Dense, BatchNormalization
-    from keras.models import Sequential
     import keras_tuner as kt
     from tuner import MyHyperModel
 
