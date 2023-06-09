@@ -303,10 +303,10 @@ def main():
             y_test_KNN, y_pred_KNN = train(df, KNN)
             evaluate_model(y_test_KNN, y_pred_KNN, "K-Nearest Neighbors")
 
-        # plot_3d(y_test_RF, y_pred_RF)
-        # plot_3d(y_test_DT, y_pred_DT)
-        # plot_3d(y_test_SVM, y_pred_SVM)
-        # plot_3d(y_test_KNN, y_pred_KNN)
+        plot_3d(y_test_RF, y_pred_RF)
+        plot_3d(y_test_DT, y_pred_DT)
+        plot_3d(y_test_SVM, y_pred_SVM)
+        plot_3d(y_test_KNN, y_pred_KNN)
 
     if TRAIN_NN_FLAG:
         # split data
