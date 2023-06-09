@@ -20,7 +20,7 @@ USE_DIRECTION_FLAG = False
 TRAIN_NN_FLAG = False
 TRAIN_ML_FLAG = True
 USE_PLOT_FLAG = False
-USE_COORDS_FLAG = False
+USE_COORDS_FLAG = True
 
 if TRAIN_NN_FLAG:
     from keras.layers import Dense, BatchNormalization
@@ -313,94 +313,82 @@ def main():
         X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
         input_dim = X_train.shape[1]
 
-        if USE_COORDS_FLAG:
-            model = Sequential()
-            model.add(BatchNormalization(input_shape=(input_dim,)))
-            model.add(Dense(128, input_dim=input_dim, activation="relu"))
-            model.add(Dense(64, activation="relu"))
-            model.add(Dense(16, activation="relu"))
-            model.add(Dense(3, activation="linear"))
-            model.compile(
-                loss="mean_squared_error", optimizer="adam", metrics=["mse", "mae"]
-            )
-            history = model.fit(
-                X_train,
-                y_train,
-                epochs=MAX_EPOCHS,
-                batch_size=MAX_BATCH_SIZE,
-                validation_split=VALIDATION_SPLIT,
-                validation_data=(X_test, y_test),
-                shuffle=True,
-            )
-        else:
-            # keras tuner
-            hyperModel = MyHyperModel()
-            tuner = kt.BayesianOptimization(
-                hyperModel,
-                objective="mse",
-                max_trials=5,
-                executions_per_trial=3,
-                directory="hypermodels",
-                project_name="keras_tuner",
-            )
+        PROJECT_NAME = (
+            "with_directions"
+            if USE_DIRECTION_FLAG
+            else "with_coords"
+            if USE_COORDS_FLAG
+            else "basis"
+        )
 
-            tuner.search(
-                X_train,
-                y_train,
-                validation_split=0.2,
-                validation_data=(X_test, y_test),
-            )
+        # keras tuner
+        hyperModel = MyHyperModel()
+        tuner = kt.BayesianOptimization(
+            hyperModel,
+            objective="mse",
+            max_trials=5,
+            executions_per_trial=3,
+            directory="keras_hypermodels",
+            project_name=PROJECT_NAME,
+        )
 
-            # get best model
-            best_model = tuner.get_best_models(num_models=1)[0]
-            # get best hyperparameters
-            best_hyperparameters = tuner.get_best_hyperparameters(num_trials=1)[0]
+        tuner.search(
+            X_train,
+            y_train,
+            validation_split=0.2,
+            validation_data=(X_test, y_test),
+        )
 
-            # Build the model with the best hp.
-            model = tuner.hypermodel.build(best_hyperparameters)
-            # Train the model.
-            history = model.fit(
-                X_train,
-                y_train,
-                validation_split=VALIDATION_SPLIT,
-                validation_data=(X_test, y_test),
-            )
+        # get best model
+        best_model = tuner.get_best_models(num_models=1)[0]
+        # get best hyperparameters
+        best_hyperparameters = tuner.get_best_hyperparameters(num_trials=1)[0]
 
-            # re-train the model with the best hyperparameters
-            model.fit(
-                X_train,
-                y_train,
-                epochs=best_hyperparameters.values["epochs"],
-                batch_size=best_hyperparameters.values["batch_size"],
-                shuffle=best_hyperparameters.values["shuffle"],
-                validation_split=VALIDATION_SPLIT,
-                validation_data=(X_test, y_test),
-            )
+        # Build the model with the best hp.
+        model = tuner.hypermodel.build(best_hyperparameters)
+        # Train the model.
+        history = model.fit(
+            X_train,
+            y_train,
+            validation_split=VALIDATION_SPLIT,
+            validation_data=(X_test, y_test),
+        )
 
-            # Evaluate the best model.
-            loss, mse, mae = model.evaluate(X_test, y_test)
-            print("----------------------------------------------")
-            print("Mean Squared Error: ", mse)
-            print("Mean Absolute Error: ", mae)
+        # re-train the model with the best hyperparameters
+        model.fit(
+            X_train,
+            y_train,
+            epochs=best_hyperparameters.values["epochs"],
+            batch_size=best_hyperparameters.values["batch_size"],
+            shuffle=best_hyperparameters.values["shuffle"],
+            validation_split=VALIDATION_SPLIT,
+            validation_data=(X_test, y_test),
+        )
 
-            # make predictions
-            y_pred = model.predict(X_test)
-            r2 = r2_score(y_test, y_pred)
-            print("----------------------------------------------")
-            print("r2 score: ", r2.round(5) * 100, "%")
-            print("----------------------------------------------")
+        # Evaluate the best model.
+        loss, mse, mae = model.evaluate(X_test, y_test)
+        print("----------------------------------------------")
+        print("Mean Squared Error: ", mse)
+        print("Mean Absolute Error: ", mae)
 
-            # print the summary of the model
-            print(model.summary())
+        # make predictions
+        y_pred = model.predict(X_test)
+        r2 = r2_score(y_test, y_pred)
+        print("----------------------------------------------")
+        print("r2 score: ", r2.round(5) * 100, "%")
+        print("----------------------------------------------")
 
-            # print the best hyperparameters
-            print("----------------------------------------------")
-            print("Best Hyperparameters:")
-            print("----------------------------------------------")
-            print(best_hyperparameters.values)
-            print("----------------------------------------------")
+        # print the summary of the model
+        print(model.summary())
 
-            plot_3d(y_test, y_pred)
+        # print the best hyperparameters
+        print("----------------------------------------------")
+        print("Best Hyperparameters:")
+        print("----------------------------------------------")
+        print(best_hyperparameters.values)
+        print("----------------------------------------------")
+
+        plot_3d(y_test, y_pred)
 
         if USE_PLOT_FLAG:
             # plot the loss and validation loss of the dataset
@@ -413,7 +401,6 @@ def main():
             plt.legend()
             plt.show()
 
-        if USE_PLOT_FLAG:
             plot_3d(y_test, y_pred)
 
 
