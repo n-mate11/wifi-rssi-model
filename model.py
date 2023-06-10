@@ -16,11 +16,11 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
 # flags
-TRAIN_ML_FLAG = False
-TRAIN_NN_FLAG = True
+TRAIN_ML_FLAG = True
+TRAIN_NN_FLAG = False
 
 USE_DIRECTION_FLAG = False
-USE_COORDS_FLAG = True
+USE_COORDS_FLAG = False
 
 USE_PLOT_FLAG = False
 
@@ -339,7 +339,6 @@ def main():
     if TRAIN_NN_FLAG:
         # split data
         X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
-        input_dim = X_train.shape[1]
 
         PROJECT_NAME = (
             "with_directions"
@@ -360,6 +359,7 @@ def main():
             project_name=PROJECT_NAME,
         )
 
+        # search for best hyperparameters
         tuner.search(
             X_train,
             y_train,
@@ -367,12 +367,10 @@ def main():
             validation_data=(X_test, y_test),
         )
 
-        # get best model
         best_model = tuner.get_best_models(num_models=1)[0]
-        # get best hyperparameters
         best_hyperparameters = tuner.get_best_hyperparameters(num_trials=1)[0]
 
-        # Build the model with the best hp.
+        # Build the model with the best hyperparameters
         model = tuner.hypermodel.build(best_hyperparameters)
         # Train the model.
         history = model.fit(
@@ -406,10 +404,7 @@ def main():
         print("r2 score: ", r2.round(5) * 100, "%")
         print("----------------------------------------------")
 
-        # print the summary of the model
         print(model.summary())
-
-        # print the best hyperparameters
         print("----------------------------------------------")
         print("Best Hyperparameters:")
         print("----------------------------------------------")
