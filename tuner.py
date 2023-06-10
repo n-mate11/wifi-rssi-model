@@ -3,7 +3,7 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 import keras_tuner as kt
 
-MAX_EPOCHS = 205
+MAX_EPOCHS = 305
 MAX_BATCH_SIZE = 128
 
 
@@ -11,7 +11,7 @@ class MyHyperModel(kt.HyperModel):
     def build(self, hp):
         model = Sequential()
         model.add(Flatten())
-        # Wetther to use normalization
+        # Whether to use normalization
         if hp.Boolean("normalization"):
             model.add(BatchNormalization())
 
