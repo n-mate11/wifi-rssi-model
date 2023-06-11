@@ -19,7 +19,7 @@ from sklearn.multioutput import MultiOutputRegressor
 TRAIN_ML_FLAG = True
 TRAIN_NN_FLAG = True
 
-USE_DIRECTION_FLAG = False
+USE_DIRECTION_FLAG = True
 USE_COORDS_FLAG = False
 
 USE_PLOT_FLAG = False
