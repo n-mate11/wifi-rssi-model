@@ -17,7 +17,7 @@ from sklearn.multioutput import MultiOutputRegressor
 
 # flags
 TRAIN_ML_FLAG = True
-TRAIN_NN_FLAG = False
+TRAIN_NN_FLAG = True
 
 USE_DIRECTION_FLAG = False
 USE_COORDS_FLAG = False
@@ -185,7 +185,7 @@ def grid_search(estimator, params, X, y):
     print("--------------------------------------------------")
 
 
-def plot_3d(y_test, y_pred):
+def plot_3d(y_test, y_pred, name):
     fig = plt.figure(figsize=(10, 7))
     ax = plt.axes(projection="3d")
 
@@ -194,8 +194,8 @@ def plot_3d(y_test, y_pred):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
-    ax.set_title("Actual values vs Predicted values")
-    plt.show()
+    ax.set_title(f"Actual values vs Predicted values - {name}")
+    plt.savefig(f"{name}.png", bbox_inches="tight")
 
 
 def main():
@@ -331,10 +331,10 @@ def main():
             y_pred_KNN = train(df, KNN, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
 
-        plot_3d(y_test, y_pred_RF)
-        plot_3d(y_test, y_pred_DT)
-        plot_3d(y_test, y_pred_SVM)
-        plot_3d(y_test, y_pred_KNN)
+        plot_3d(y_test, y_pred_RF, "Random Forest")
+        plot_3d(y_test, y_pred_DT, "Decision Tree")
+        plot_3d(y_test, y_pred_SVM, "Support Vector Machine")
+        plot_3d(y_test, y_pred_KNN, "K-Nearest Neighbors")
 
     if TRAIN_NN_FLAG:
         # split data
@@ -411,7 +411,7 @@ def main():
         print(best_hyperparameters.values)
         print("----------------------------------------------")
 
-        plot_3d(y_test, y_pred)
+        plot_3d(y_test, y_pred, "Neural Network")
 
         if USE_PLOT_FLAG:
             # plot the loss and validation loss of the dataset
@@ -423,8 +423,6 @@ def main():
             plt.title("Training and Validation Loss")
             plt.legend()
             plt.show()
-
-            plot_3d(y_test, y_pred)
 
 
 if __name__ == "__main__":
