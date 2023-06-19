@@ -16,11 +16,11 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
 # flags
-TRAIN_ML_FLAG = True
-TRAIN_NN_FLAG = True
+TRAIN_ML_FLAG = False
+TRAIN_NN_FLAG = False
 
 USE_DIRECTION_FLAG = False
-USE_COORDS_FLAG = True
+USE_COORDS_FLAG = False
 
 USE_PLOT_FLAG = False
 
@@ -80,10 +80,7 @@ def enrich_with_ap_coords(df, ap_coords):
 
 def split_data(df, target=["x", "y", "z"], test_size=0.2, random_state=0):
     X = df.loc[:, ~df.columns.isin(target)]
-    if TRAIN_NN_FLAG:
-        y = df[target]
-    if TRAIN_ML_FLAG:
-        y = df[target]
+    y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
