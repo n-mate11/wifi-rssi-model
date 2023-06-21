@@ -1,4 +1,4 @@
-from model import load_data, scale_rssi, scale_xyz, split_data, train, plot_3d
+from model import load_data, scale_rssi, scale_xyz, split_data, train
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
@@ -6,8 +6,10 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn import metrics
 
-import kerastuner as kt
+import keras_tuner as kt
 from tuner import MyHyperModel
+
+from PIL import Image, ImageDraw
 
 VALIDATION_SPLIT = 0.2
 
@@ -64,6 +66,91 @@ def preprocess_data(experiment_df):
     return experiment_df
 
 
+def draw_predictions_on_map(test, y_pred, name):
+    # use pillow to draw the predictions on map
+    im = Image.open("./6th floor drawing.png")
+    draw = ImageDraw.Draw(im)
+
+    width, height = im.size
+    x_step, y_step = width / 70, height / 70
+    point_size = 10
+
+    # adding 20 coordinate values to adjust the xy coordinate to fit the map
+
+    # draw the start point
+    draw.rectangle(
+        (
+            (START_COORDINATES[0] * x_step - point_size + 20),
+            (height - (START_COORDINATES[1] * y_step) - point_size + 20),
+            (START_COORDINATES[0] * x_step + point_size + 20),
+            (height - (START_COORDINATES[1] * y_step) + point_size + 20),
+        ),
+        fill="green",
+        outline="green",
+    )
+
+    # draw the end point on map starting from the bottom left corner
+    draw.rectangle(
+        (
+            (END_COORDINATES[0] * x_step - point_size + 20),
+            (height - (END_COORDINATES[1] * y_step) - point_size + 20),
+            (END_COORDINATES[0] * x_step + point_size + 20),
+            (height - (END_COORDINATES[1] * y_step) + point_size + 20),
+        ),
+        fill="blue",
+        outline="blue",
+    )
+
+    test.reset_index(drop=True, inplace=True)
+
+    # loop through the test set and draw the points on map
+    for i in range(len(test)):
+        # get the coordinates of the test set
+        x = test["x"][i]
+        y = test["y"][i]
+
+        # calculate the coordinates on the map
+        x = x_step * x * 70 + START_COORDINATES[0] * x_step + 20
+        y = height - (y_step * y * 70) + 20
+
+        # draw the point
+        draw.ellipse(
+            (
+                (x - point_size),
+                (y - point_size),
+                (x + point_size),
+                (y + point_size),
+            ),
+            fill=(92, 92, 92),
+            outline=(92, 92, 92),
+        )
+
+    # draw the predictions on map
+    for i in range(len(y_pred)):
+        # get the coordinates of the prediction
+        x = y_pred[i][0]
+        y = y_pred[i][1]
+
+        # calculate the coordinates on the map
+        x = x_step * x * 70 + START_COORDINATES[0] * x_step + 20
+        y = height - (y_step * y * 70) + 20
+
+        # draw the point
+        draw.ellipse(
+            (
+                (x - point_size),
+                (y - point_size),
+                (x + point_size),
+                (y + point_size),
+            ),
+            fill="red",
+            outline="red",
+        )
+
+    im.save(f"./evaluation_images/experiment/{name}.png")
+    im.show()
+
+
 def main():
     experiment_df = load_data("./data/experiment")
 
@@ -81,12 +168,16 @@ def main():
     print("Mean Squared Error:", metrics.mean_squared_error(y_test, y_pred))
     print("R2:", metrics.r2_score(y_test, y_pred))
 
+    draw_predictions_on_map(y_test, y_pred, "Random Forest")
+
     DF = DecisionTreeRegressor()
     y_pred = train(experiment_df, DF, X_train, X_test, y_train)
 
     print("--- Decision Tree ---")
     print("Mean Squared Error:", metrics.mean_squared_error(y_test, y_pred))
     print("R2:", metrics.r2_score(y_test, y_pred))
+
+    draw_predictions_on_map(y_test, y_pred, "Decision Tree")
 
     SVM = SVR()
     y_pred = train(experiment_df, SVM, X_train, X_test, y_train)
@@ -95,6 +186,8 @@ def main():
     print("Mean Squared Error:", metrics.mean_squared_error(y_test, y_pred))
     print("R2:", metrics.r2_score(y_test, y_pred))
 
+    draw_predictions_on_map(y_test, y_pred, "SVM")
+
     KNN = KNeighborsRegressor()
     y_pred = train(experiment_df, KNN, X_train, X_test, y_train)
 
@@ -102,10 +195,9 @@ def main():
     print("Mean Squared Error:", metrics.mean_squared_error(y_test, y_pred))
     print("R2:", metrics.r2_score(y_test, y_pred))
 
-    plot_3d(experiment_df, y_pred, "Random Forest")
-    plot_3d(experiment_df, y_pred, "Decision Tree")
-    plot_3d(experiment_df, y_pred, "Support Vector Machine")
-    plot_3d(experiment_df, y_pred, "K-Nearest Neighbors")
+    draw_predictions_on_map(y_test, y_pred, "KNN")
+
+    return
 
     # create deep learning model and train it with tuner.py
     hyperModel = MyHyperModel()
@@ -170,7 +262,7 @@ def main():
     print(best_hyperparameters.values)
     print("----------------------------------------------")
 
-    plot_3d(experiment_df, y_pred, "Deep Learning")
+    draw_predictions_on_map(y_pred, "Deep Learning")
 
 
 if __name__ == "__main__":
