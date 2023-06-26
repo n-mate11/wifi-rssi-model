@@ -16,7 +16,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
 # flags
-TRAIN_ML_FLAG = False
+TRAIN_ML_FLAG = True
 TRAIN_NN_FLAG = False
 
 USE_DIRECTION_FLAG = False
@@ -186,12 +186,44 @@ def plot_3d(y_test, y_pred, name):
     fig = plt.figure(figsize=(10, 7))
     ax = plt.axes(projection="3d")
 
-    ax.scatter3D(y_test["x"], y_test["y"], y_test["z"], color="blue", label="y_test")
-    ax.scatter3D(y_pred[:, 0], y_pred[:, 1], y_pred[:, 2], color="red", label="y_pred")
+    SWAPPED = True
+    if SWAPPED:
+        color_map = plt.get_cmap("tab20c")
+        colors = y_test["x"] + y_test["y"] + y_test["z"]
+        ax.scatter3D(
+            y_pred[:, 0],
+            y_pred[:, 1],
+            y_pred[:, 2],
+            s=5,
+            cmap=color_map,
+            c=colors,
+            label="y_pred",
+        )
+        ax.scatter3D(
+            y_test["x"],
+            y_test["y"],
+            y_test["z"],
+            s=20,
+            cmap=color_map,
+            c=colors,
+            label="y_test",
+        )
+        ax.scatter3D(
+            y_test["x"], y_test["y"], y_test["z"], s=3, color="black", label="y_test"
+        )
+    else:
+        ax.scatter3D(
+            y_test["x"], y_test["y"], y_test["z"], color="blue", label="y_test"
+        )
+        ax.scatter3D(
+            y_pred[:, 0], y_pred[:, 1], y_pred[:, 2], color="red", label="y_pred"
+        )
+
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
     ax.set_title(f"Actual values vs Predicted values - {name}")
+    plt.show()
     plt.savefig(f"{name}.png", bbox_inches="tight")
 
 
