@@ -197,8 +197,6 @@ def main():
 
     draw_predictions_on_map(y_test, y_pred, "KNN")
 
-    return
-
     # create deep learning model and train it with tuner.py
     hyperModel = MyHyperModel()
     tuner = kt.BayesianOptimization(
