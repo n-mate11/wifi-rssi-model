@@ -15,14 +15,18 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
+from experiment import draw_predictions_on_map, preprocess_experiment_data
+
 # flags
-TRAIN_ML_FLAG = True
-TRAIN_NN_FLAG = False
+TRAIN_ML_FLAG = False
+TRAIN_NN_FLAG = True
 
 USE_DIRECTION_FLAG = False
 USE_COORDS_FLAG = False
 
-USE_PLOT_FLAG = False
+USE_PLOT_FLAG = True
+
+EXPERIMENT = True
 
 if TRAIN_NN_FLAG:
     import keras_tuner as kt
@@ -142,7 +146,7 @@ def add_directions(df):
     return df
 
 
-def train(df, regressor, X_train, X_test, y_train):
+def train(regressor, X_train, X_test, y_train):
     MOR = MultiOutputRegressor(regressor)
     return MOR.fit(X_train, y_train).predict(X_test)
 
@@ -246,6 +250,15 @@ def main():
     # split the data
     X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
 
+    if EXPERIMENT:
+        experiment_df = load_data("./data/experiment")
+        experiment_df = preprocess_experiment_data(experiment_df)
+        experiment_df = scale_rssi(experiment_df)
+        experiment_df = scale_xyz(experiment_df)
+
+        X_experiment_test = experiment_df.iloc[:, :-3]
+        y_experiment_test = experiment_df.iloc[:, -3:]
+
     if TRAIN_ML_FLAG:
         if USE_DIRECTION_FLAG:
             print("Using directions")
@@ -256,7 +269,7 @@ def main():
                 bootstrap=False,
                 random_state=3,
             )
-            y_pred_RF = train(df, RF, X_train, X_test, y_train)
+            y_pred_RF = train(RF, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_RF, "Random Forest")
 
             print("--------------------------------------------------")
@@ -267,13 +280,13 @@ def main():
                 max_features="sqrt",
                 max_leaf_nodes=50,
             )
-            y_pred_DT = train(df, DT, X_train, X_test, y_train)
+            y_pred_DT = train(DT, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_DT, "Decision Tree")
 
             print("--------------------------------------------------")
 
             SVM = SVR(degree=1, gamma=1, coef0=0.001, C=1, epsilon=0.001)
-            y_pred_SVM = train(df, SVM, X_train, X_test, y_train)
+            y_pred_SVM = train(SVM, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
 
             print("--------------------------------------------------")
@@ -285,14 +298,14 @@ def main():
                 leaf_size=40,
                 metric="manhattan",
             )
-            y_pred_KNN = train(df, KNN, X_train, X_test, y_train)
+            y_pred_KNN = train(KNN, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         elif USE_COORDS_FLAG:
             print("Using coordinates")
             RF = RandomForestRegressor(
                 n_estimators=90, max_depth=55, max_features="sqrt", bootstrap=False
             )
-            y_pred_RF = train(df, RF, X_train, X_test, y_train)
+            y_pred_RF = train(RF, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_RF, "Random Forest")
 
             print("--------------------------------------------------")
@@ -303,13 +316,13 @@ def main():
                 max_features="sqrt",
                 min_samples_split=7,
             )
-            y_pred_DT = train(df, DT, X_train, X_test, y_train)
+            y_pred_DT = train(DT, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_DT, "Decision Tree")
 
             print("--------------------------------------------------")
 
             SVM = SVR(degree=10, kernel="poly", C=1, epsilon=0.01, shrinking=False)
-            y_pred_SVM = train(df, SVM, X_train, X_test, y_train)
+            y_pred_SVM = train(SVM, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
 
             print("--------------------------------------------------")
@@ -322,7 +335,7 @@ def main():
                 p=1,
                 metric="manhattan",
             )
-            y_pred_KNN = train(df, KNN, X_train, X_test, y_train)
+            y_pred_KNN = train(KNN, X_train, X_test, y_train)
             evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
         else:
             print("Using basis model")
@@ -333,20 +346,32 @@ def main():
                 bootstrap=False,
                 max_features="sqrt",
             )
-            y_pred_RF = train(df, RF, X_train, X_test, y_train)
-            evaluate_model(y_test, y_pred_RF, "Random Forest")
+            if EXPERIMENT:
+                y_pred_RF = train(RF, X_train, X_experiment_test, y_train)
+                evaluate_model(y_experiment_test, y_pred_RF, "Random Forest")
+            else:
+                y_pred_RF = train(RF, X_train, X_test, y_train)
+                evaluate_model(y_test, y_pred_RF, "Random Forest")
 
             print("--------------------------------------------------")
             DT = DecisionTreeRegressor(
                 criterion="poisson", min_samples_split=5, max_leaf_nodes=230
             )
-            y_pred_DT = train(df, DT, X_train, X_test, y_train)
-            evaluate_model(y_test, y_pred_DT, "Decision Tree")
+            if EXPERIMENT:
+                y_pred_DT = train(DT, X_train, X_experiment_test, y_train)
+                evaluate_model(y_experiment_test, y_pred_DT, "Decision Tree")
+            else:
+                y_pred_DT = train(DT, X_train, X_test, y_train)
+                evaluate_model(y_test, y_pred_DT, "Decision Tree")
 
             print("--------------------------------------------------")
             SVM = SVR(degree=1, coef0=1e-06, gamma=1, tol=1e-05, C=1)
-            y_pred_SVM = train(df, SVM, X_train, X_test, y_train)
-            evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
+            if EXPERIMENT:
+                y_pred_SVM = train(SVM, X_train, X_experiment_test, y_train)
+                evaluate_model(y_experiment_test, y_pred_SVM, "Support Vector Machine")
+            else:
+                y_pred_SVM = train(SVM, X_train, X_test, y_train)
+                evaluate_model(y_test, y_pred_SVM, "Support Vector Machine")
 
             print("--------------------------------------------------")
             KNN = KNeighborsRegressor(
@@ -357,23 +382,45 @@ def main():
                 metric="manhattan",
                 p=1,
             )
-            y_pred_KNN = train(df, KNN, X_train, X_test, y_train)
-            evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
+            if EXPERIMENT:
+                y_pred_KNN = train(KNN, X_train, X_experiment_test, y_train)
+                evaluate_model(y_experiment_test, y_pred_KNN, "K-Nearest Neighbors")
+            else:
+                y_pred_KNN = train(KNN, X_train, X_test, y_train)
+                evaluate_model(y_test, y_pred_KNN, "K-Nearest Neighbors")
 
-        plot_3d(y_test, y_pred_RF, "Random Forest")
-        plot_3d(y_test, y_pred_DT, "Decision Tree")
-        plot_3d(y_test, y_pred_SVM, "Support Vector Machine")
-        plot_3d(y_test, y_pred_KNN, "K-Nearest Neighbors")
+        if USE_PLOT_FLAG:
+            if EXPERIMENT:
+                draw_predictions_on_map(y_experiment_test, y_pred_RF, "Random Forest")
+                draw_predictions_on_map(y_experiment_test, y_pred_DT, "Decision Tree")
+                draw_predictions_on_map(
+                    y_experiment_test, y_pred_SVM, "Support Vector Machine"
+                )
+                draw_predictions_on_map(
+                    y_experiment_test, y_pred_KNN, "K-Nearest Neighbors"
+                )
+            else:
+                plot_3d(y_test, y_pred_RF, "Random Forest")
+                plot_3d(y_test, y_pred_DT, "Decision Tree")
+                plot_3d(y_test, y_pred_SVM, "Support Vector Machine")
+                plot_3d(y_test, y_pred_KNN, "K-Nearest Neighbors")
 
     if TRAIN_NN_FLAG:
         # split data
         X_train, X_test, y_train, y_test = split_data(df, test_size=0.2, random_state=0)
+
+        if EXPERIMENT:
+            VALIDATION_DATA = (X_experiment_test, y_experiment_test)
+        else:
+            VALIDATION_DATA = (X_test, y_test)
 
         PROJECT_NAME = (
             "with_directions"
             if USE_DIRECTION_FLAG
             else "with_coords"
             if USE_COORDS_FLAG
+            else "experiment"
+            if EXPERIMENT
             else "basis"
         )
 
@@ -393,7 +440,7 @@ def main():
             X_train,
             y_train,
             validation_split=VALIDATION_SPLIT,
-            validation_data=(X_test, y_test),
+            validation_data=VALIDATION_DATA,
         )
 
         best_model = tuner.get_best_models(num_models=1)[0]
@@ -406,7 +453,7 @@ def main():
             X_train,
             y_train,
             validation_split=VALIDATION_SPLIT,
-            validation_data=(X_test, y_test),
+            validation_data=VALIDATION_DATA,
         )
 
         # re-train the model with the best hyperparameters
@@ -417,7 +464,7 @@ def main():
             batch_size=best_hyperparameters.values["batch_size"],
             shuffle=best_hyperparameters.values["shuffle"],
             validation_split=VALIDATION_SPLIT,
-            validation_data=(X_test, y_test),
+            validation_data=VALIDATION_DATA,
         )
 
         # Evaluate the best model.
@@ -427,8 +474,12 @@ def main():
         print("Mean Absolute Error: ", mae)
 
         # make predictions
-        y_pred = model.predict(X_test)
-        r2 = r2_score(y_test, y_pred)
+        if EXPERIMENT:
+            y_pred = model.predict(X_experiment_test)
+            r2 = r2_score(y_experiment_test, y_pred)
+        else:
+            y_pred = model.predict(X_test)
+            r2 = r2_score(y_test, y_pred)
         print("----------------------------------------------")
         print("r2 score: ", r2.round(5) * 100, "%")
         print("----------------------------------------------")
@@ -440,18 +491,11 @@ def main():
         print(best_hyperparameters.values)
         print("----------------------------------------------")
 
-        plot_3d(y_test, y_pred, "Neural Network")
-
         if USE_PLOT_FLAG:
-            # plot the loss and validation loss of the dataset
-            plt.figure(figsize=(10, 5))
-            plt.plot(history.history["loss"], label="Training Loss")
-            plt.plot(history.history["val_loss"], label="Validation Loss")
-            plt.xlabel("Epochs")
-            plt.ylabel("Loss")
-            plt.title("Training and Validation Loss")
-            plt.legend()
-            plt.show()
+            if EXPERIMENT:
+                draw_predictions_on_map(y_experiment_test, y_pred, "Neural Network")
+            else:
+                plot_3d(y_test, y_pred, "Neural Network")
 
 
 if __name__ == "__main__":
