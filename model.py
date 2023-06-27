@@ -256,6 +256,8 @@ def main():
         experiment_df = scale_rssi(experiment_df)
         experiment_df = scale_xyz(experiment_df)
 
+        experiment_df.sort_values(by=["x"], inplace=True)
+
         X_experiment_test = experiment_df.iloc[:, :-3]
         y_experiment_test = experiment_df.iloc[:, -3:]
 
