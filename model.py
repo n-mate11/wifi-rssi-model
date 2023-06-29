@@ -15,7 +15,11 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
-from experiment import draw_predictions_on_map, preprocess_experiment_data
+from experiment import (
+    draw_predictions_on_map,
+    preprocess_experiment_data,
+    change_no_result_to_one,
+)
 
 # flags
 TRAIN_ML_FLAG = False
@@ -253,11 +257,31 @@ def main():
     if EXPERIMENT:
         experiment_df = load_data("./data/experiment")
         experiment_df = preprocess_experiment_data(experiment_df)
+
+        experiment_df = change_no_result_to_one(experiment_df)
+
+        print(experiment_df)
+
+        if USE_COORDS_FLAG:
+            AP_map = {}
+            for i in range(len(ap_coords)):
+                val_x = ap_coords.iloc[i]["x"]
+                val_y = ap_coords.iloc[i]["y"]
+                val_z = ap_coords.iloc[i]["z"]
+                val_name = ap_coords.iloc[i]["name"]
+                val_ap_name = val_name
+                AP_map[val_ap_name] = (val_x, val_y, val_z)
+
+            for j in range(len(experiment_df)):
+                print("experiment", j)
+                for col in experiment_df.columns:
+                    val = experiment_df.iloc[j][col]
+                    if val != 1:
+                        if col in AP_map.keys():
+                            print(col, AP_map[col], val)
+
         experiment_df = scale_rssi(experiment_df)
         experiment_df = scale_xyz(experiment_df)
-
-        experiment_df.sort_values(by=["x"], inplace=True)
-
         X_experiment_test = experiment_df.iloc[:, :-3]
         y_experiment_test = experiment_df.iloc[:, -3:]
 

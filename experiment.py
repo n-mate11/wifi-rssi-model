@@ -56,6 +56,14 @@ def preprocess_experiment_data(experiment_df):
     return experiment_df
 
 
+def change_no_result_to_one(experiment_df):
+    for column in experiment_df.columns:
+        if column not in ["x", "y", "z"]:
+            experiment_df[column] = experiment_df[column].replace(0, 1)
+
+    return experiment_df
+
+
 def draw_predictions_on_map(test, y_pred, name):
     # use pillow to draw the predictions on map
     im = Image.open("./6th floor drawing.png")
