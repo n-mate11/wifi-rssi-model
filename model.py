@@ -22,15 +22,15 @@ from experiment import (
 )
 
 # flags
-TRAIN_ML_FLAG = False
+TRAIN_ML_FLAG = True
 TRAIN_NN_FLAG = True
 
 USE_DIRECTION_FLAG = False
-USE_COORDS_FLAG = False
+USE_COORDS_FLAG = True
 
 USE_PLOT_FLAG = True
 
-EXPERIMENT = True
+EXPERIMENT = False
 
 if TRAIN_NN_FLAG:
     import keras_tuner as kt
@@ -231,8 +231,8 @@ def plot_3d(y_test, y_pred, name):
     ax.set_ylabel("y")
     ax.set_zlabel("z")
     ax.set_title(f"Actual values vs Predicted values - {name}")
-    plt.show()
     plt.savefig(f"{name}.png", bbox_inches="tight")
+    plt.show()
 
 
 def main():
