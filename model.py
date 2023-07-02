@@ -19,18 +19,19 @@ from experiment import (
     draw_predictions_on_map,
     preprocess_experiment_data,
     change_no_result_to_one,
+    START_COORDINATES,
 )
 
 # flags
-TRAIN_ML_FLAG = True
+TRAIN_ML_FLAG = False
 TRAIN_NN_FLAG = True
 
 USE_DIRECTION_FLAG = False
-USE_COORDS_FLAG = True
+USE_COORDS_FLAG = False
 
-USE_PLOT_FLAG = True
+USE_PLOT_FLAG = False
 
-EXPERIMENT = False
+EXPERIMENT = True
 
 if TRAIN_NN_FLAG:
     import keras_tuner as kt
@@ -235,6 +236,14 @@ def plot_3d(y_test, y_pred, name):
     plt.show()
 
 
+def experiment_postprocessing(df):
+    y = START_COORDINATES[1] / Y_MAX
+    z = START_COORDINATES[2] / Z_MAX
+    df[:, 1] = y
+    df[:, 2] = z
+    return df
+
+
 def main():
     # load the data
     DF_F5 = load_data(F5_PATH)
@@ -257,10 +266,7 @@ def main():
     if EXPERIMENT:
         experiment_df = load_data("./data/experiment")
         experiment_df = preprocess_experiment_data(experiment_df)
-
         experiment_df = change_no_result_to_one(experiment_df)
-
-        print(experiment_df)
 
         if USE_COORDS_FLAG:
             AP_map = {}
@@ -374,6 +380,7 @@ def main():
             )
             if EXPERIMENT:
                 y_pred_RF = train(RF, X_train, X_experiment_test, y_train)
+                y_pred_RF = experiment_postprocessing(y_pred_RF)
                 evaluate_model(y_experiment_test, y_pred_RF, "Random Forest")
             else:
                 y_pred_RF = train(RF, X_train, X_test, y_train)
@@ -385,6 +392,7 @@ def main():
             )
             if EXPERIMENT:
                 y_pred_DT = train(DT, X_train, X_experiment_test, y_train)
+                y_pred_DT = experiment_postprocessing(y_pred_DT)
                 evaluate_model(y_experiment_test, y_pred_DT, "Decision Tree")
             else:
                 y_pred_DT = train(DT, X_train, X_test, y_train)
@@ -394,6 +402,7 @@ def main():
             SVM = SVR(degree=1, coef0=1e-06, gamma=1, tol=1e-05, C=1)
             if EXPERIMENT:
                 y_pred_SVM = train(SVM, X_train, X_experiment_test, y_train)
+                y_pred_SVM = experiment_postprocessing(y_pred_SVM)
                 evaluate_model(y_experiment_test, y_pred_SVM, "Support Vector Machine")
             else:
                 y_pred_SVM = train(SVM, X_train, X_test, y_train)
@@ -410,6 +419,7 @@ def main():
             )
             if EXPERIMENT:
                 y_pred_KNN = train(KNN, X_train, X_experiment_test, y_train)
+                y_pred_KNN = experiment_postprocessing(y_pred_KNN)
                 evaluate_model(y_experiment_test, y_pred_KNN, "K-Nearest Neighbors")
             else:
                 y_pred_KNN = train(KNN, X_train, X_test, y_train)
@@ -493,22 +503,21 @@ def main():
             validation_data=VALIDATION_DATA,
         )
 
-        # Evaluate the best model.
-        loss, mse, mae = model.evaluate(X_test, y_test)
-        print("----------------------------------------------")
-        print("Mean Squared Error: ", mse)
-        print("Mean Absolute Error: ", mae)
-
-        # make predictions
+        # make predictions and evaluate the model
         if EXPERIMENT:
             y_pred = model.predict(X_experiment_test)
-            r2 = r2_score(y_experiment_test, y_pred)
+            y_pred = experiment_postprocessing(y_pred)
+
+            print(len(y_pred), len(y_experiment_test))
+            print(y_pred)
+            print(y_experiment_test)
+            for i in range(len(y_pred)):
+                print(y_pred[i][0], y_experiment_test.iloc[i][0], end="\t")
+                print(abs(y_experiment_test.iloc[i][0] - y_pred[i][0]))
+            evaluate_model(y_experiment_test, y_pred, "Neural Network")
         else:
             y_pred = model.predict(X_test)
-            r2 = r2_score(y_test, y_pred)
-        print("----------------------------------------------")
-        print("r2 score: ", r2.round(5) * 100, "%")
-        print("----------------------------------------------")
+            evaluate_model(y_test, y_pred, "Neural Network")
 
         print(model.summary())
         print("----------------------------------------------")
